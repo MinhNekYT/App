@@ -1,0 +1,36 @@
+name: Provision temporary Linux session
+
+on:
+  workflow_dispatch:
+    inputs:
+      hostname:
+        description: Lowercase hostname for the temporary Linux runner
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Validate requested hostname
+        env:
+          REQUESTED_HOSTNAME: ${{ inputs.hostname }}
+        run: |
+          if ! [[ "$REQUESTED_HOSTNAME" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
+            echo "Invalid hostname. Use lowercase letters, numbers, and hyphens only."
+            exit 1
+          fi
+      - name: Set runner hostname
+        env:
+          REQUESTED_HOSTNAME: ${{ inputs.hostname }}
+        run: |
+          sudo hostnamectl set-hostname "$REQUESTED_HOSTNAME"
+          echo "Hostname set to: $(hostname)"
+      - name: Install and run SSHX
+        run: |
+          echo "Installing SSHX. The connection link printed below is temporary."
+          curl -sSf https://sshx.io/get | sh && sshx
