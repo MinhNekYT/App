@@ -27,7 +27,7 @@
 - [x] Chuyển đăng nhập từ Google/Supabase sang Discord OAuth.
 - [x] Thêm audit log hoạt động API vào api/logs mà không ghi token hoặc dữ liệu nhạy cảm.
 - [x] Cập nhật UI, hướng dẫn Discord/VPS và kiểm thử luồng đăng nhập mới.
-- [ ] Đồng bộ thay đổi Discord lên MinhNekYT/App và lưu checkpoint.
+- [x] Đồng bộ thay đổi Discord lên MinhNekYT/App và lưu checkpoint.
 
 - [x] Loại bỏ static web export, Vercel và cấu hình bridge URL dành cho web.
 - [x] Triển khai Discord OAuth trực tiếp tại API bridge cho Android/iOS.
