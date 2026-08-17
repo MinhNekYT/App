@@ -38,4 +38,4 @@
 - [x] Loại bỏ API bridge/worker VPS, systemd, Nginx và audit log runtime.
 - [x] Chuyển Discord OAuth sang Supabase provider để không cần client secret trong app.
 - [x] Chuyển provision GitHub Actions, log và SSHX về app bằng token phụ trong bộ nhớ.
-- [ ] Cập nhật tài liệu/build secrets, kiểm thử và đồng bộ kiến trúc app-only lên MinhNekYT/App.
+- [x] Cập nhật tài liệu/build secrets, kiểm thử và đồng bộ kiến trúc app-only lên MinhNekYT/App.
