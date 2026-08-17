@@ -1,11 +1,14 @@
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { WebShell } from "@/components/frierencloud/web-shell";
 import { useFrierenCloud } from "@/lib/frierencloud/provider";
 
 export default function SettingsScreen() {
   const { accountName, language, repository, updateRepository, signOut, copy } = useFrierenCloud();
   const [draftRepository, setDraftRepository] = useState(repository);
+  const { width } = useWindowDimensions();
+  const isWide = width >= 720;
 
   async function saveRepository() {
     await updateRepository(draftRepository);
@@ -13,64 +16,83 @@ export default function SettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.eyebrow}>FRIERENCLOUD</Text>
-          <Text style={styles.title}>{copy.settings}</Text>
-          <View style={styles.card}>
-            <Text style={styles.label}>{copy.profile}</Text>
-            <Text style={styles.value}>{accountName ?? "Discord account"}</Text>
+    <WebShell active="settings">
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View>
+          <Text style={styles.eyebrow}>PREFERENCES</Text>
+          <Text style={styles.title}>Settings</Text>
+          <Text style={styles.lead}>Manage the local preferences used by this browser.</Text>
+        </View>
+
+        <View style={[styles.grid, isWide && styles.gridWide]}>
+          <View style={styles.primaryColumn}>
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>{copy.profile}</Text>
+              <Text style={styles.profileName}>{accountName ?? "Discord account"}</Text>
+              <Text style={styles.caption}>Your Discord session is managed by Supabase in this browser.</Text>
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>{copy.repository}</Text>
+              <Text style={styles.caption}>{copy.repositoryHint}</Text>
+              <TextInput
+                accessibilityLabel={copy.repository}
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={setDraftRepository}
+                placeholder="owner/repository"
+                placeholderTextColor="#71809C"
+                style={styles.input}
+                value={draftRepository}
+              />
+              <Pressable accessibilityRole="button" onPress={() => void saveRepository()} style={styles.secondaryButton}>
+                <Text style={styles.secondaryText}>{copy.saveRepository}</Text>
+              </Pressable>
+            </View>
           </View>
-          <View style={styles.card}>
-            <Text style={styles.label}>{copy.language}</Text>
-            <Text style={styles.value}>{language === "en" ? "English" : "Tiếng Việt"}</Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.label}>{copy.repository}</Text>
-            <Text style={styles.caption}>{copy.repositoryHint}</Text>
-            <TextInput
-              accessibilityLabel={copy.repository}
-              autoCapitalize="none"
-              autoCorrect={false}
-              onChangeText={setDraftRepository}
-              placeholder="owner/repository"
-              placeholderTextColor="#71809C"
-              style={styles.input}
-              value={draftRepository}
-            />
-            <Pressable accessibilityRole="button" onPress={() => void saveRepository()} style={styles.secondaryButton}>
-              <Text style={styles.secondaryText}>{copy.saveRepository}</Text>
+
+          <View style={styles.sideColumn}>
+            <View style={styles.notice}>
+              <Text style={styles.noticeLabel}>TOKEN SAFETY</Text>
+              <Text style={styles.noticeTitle}>Direct browser requests only.</Text>
+              <Text style={styles.noticeText}>
+                A secondary GitHub token is retained in memory only while this tab is open. It is not sent to a custom API and is not stored in browser storage.
+              </Text>
+            </View>
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>{copy.language}</Text>
+              <Text style={styles.profileName}>{language === "en" ? "English" : "Tiếng Việt"}</Text>
+            </View>
+            <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOutButton}>
+              <Text style={styles.signOutText}>{copy.signOut}</Text>
             </Pressable>
           </View>
-          <View style={styles.notice}>
-            <Text style={styles.noticeText}>
-              GitHub calls are made directly by this app. A secondary token is kept in memory only for the current session and is never sent to a custom API or saved to the device.
-            </Text>
-          </View>
-          <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOutButton}>
-            <Text style={styles.signOutText}>{copy.signOut}</Text>
-          </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </View>
+      </ScrollView>
+    </WebShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: "#12213C", flex: 1 },
-  content: { gap: 12, padding: 20, paddingBottom: 34 },
-  eyebrow: { color: "#43C6E8", fontSize: 11, fontWeight: "800", letterSpacing: 1.2 },
-  title: { color: "#F8FAFC", fontSize: 29, fontWeight: "700", letterSpacing: -0.7, marginBottom: 4, marginTop: 2 },
-  card: { backgroundColor: "#1C2D4C", borderColor: "#2B4168", borderRadius: 16, borderWidth: 1, padding: 16 },
-  label: { color: "#A7B4CC", fontSize: 11, fontWeight: "800", letterSpacing: 0.7, textTransform: "uppercase" },
-  value: { color: "#F8FAFC", fontSize: 16, fontWeight: "600", marginTop: 8 },
-  caption: { color: "#A7B4CC", fontSize: 13, lineHeight: 19, marginTop: 8 },
-  input: { backgroundColor: "#132541", borderColor: "#365077", borderRadius: 12, borderWidth: 1, color: "#F8FAFC", fontSize: 15, marginTop: 14, minHeight: 46, paddingHorizontal: 12 },
-  secondaryButton: { alignItems: "center", borderColor: "#4E6490", borderRadius: 12, borderWidth: 1, justifyContent: "center", marginTop: 10, minHeight: 42 },
-  secondaryText: { color: "#B9B7E8", fontSize: 14, fontWeight: "800" },
-  notice: { backgroundColor: "#153948", borderColor: "#287189", borderRadius: 14, borderWidth: 1, padding: 14 },
-  noticeText: { color: "#D7EFF7", fontSize: 13, lineHeight: 19 },
-  signOutButton: { alignItems: "center", borderColor: "#64475C", borderRadius: 14, borderWidth: 1, justifyContent: "center", marginTop: 4, minHeight: 50 },
-  signOutText: { color: "#FF9E9E", fontSize: 15, fontWeight: "800" },
+  scroll: { flexGrow: 1, gap: 25, paddingBottom: 34 },
+  eyebrow: { color: "#7FE1F6", fontSize: 11, fontWeight: "900", letterSpacing: 1.4 },
+  title: { color: "#F5F8FF", fontSize: 38, fontWeight: "800", letterSpacing: -1.3, marginTop: 8 },
+  lead: { color: "#A9B7D0", fontSize: 15, lineHeight: 23, marginTop: 10 },
+  grid: { gap: 18 },
+  gridWide: { alignItems: "flex-start", flexDirection: "row" },
+  primaryColumn: { flex: 1, gap: 18, minWidth: 0 },
+  sideColumn: { gap: 18, maxWidth: 370, width: "100%" },
+  card: { backgroundColor: "#172743", borderColor: "#2D456D", borderRadius: 18, borderWidth: 1, padding: 20 },
+  cardLabel: { color: "#8EA0BF", fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+  profileName: { color: "#F5F8FF", fontSize: 18, fontWeight: "800", marginTop: 10 },
+  caption: { color: "#A9B7D0", fontSize: 13, lineHeight: 20, marginTop: 9 },
+  input: { backgroundColor: "#0E1A30", borderColor: "#365077", borderRadius: 11, borderWidth: 1, color: "#F5F8FF", fontSize: 15, marginTop: 16, minHeight: 48, paddingHorizontal: 13 },
+  secondaryButton: { alignItems: "center", borderColor: "#647AAB", borderRadius: 11, borderWidth: 1, justifyContent: "center", marginTop: 10, minHeight: 44 },
+  secondaryText: { color: "#C9C6F4", fontSize: 14, fontWeight: "900" },
+  notice: { backgroundColor: "#153948", borderColor: "#287189", borderRadius: 18, borderWidth: 1, padding: 20 },
+  noticeLabel: { color: "#84E5FF", fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+  noticeTitle: { color: "#F5F8FF", fontSize: 18, fontWeight: "800", lineHeight: 25, marginTop: 10 },
+  noticeText: { color: "#D7EFF7", fontSize: 13, lineHeight: 20, marginTop: 9 },
+  signOutButton: { alignItems: "center", borderColor: "#715066", borderRadius: 13, borderWidth: 1, justifyContent: "center", minHeight: 48 },
+  signOutText: { color: "#FFB1B1", fontSize: 14, fontWeight: "900" },
 });

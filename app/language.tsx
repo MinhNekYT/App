@@ -1,5 +1,6 @@
+import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { useFrierenCloud } from "@/lib/frierencloud/provider";
 import type { Language } from "@/lib/frierencloud/types";
@@ -7,6 +8,8 @@ import type { Language } from "@/lib/frierencloud/types";
 export default function LanguageScreen() {
   const router = useRouter();
   const { selectLanguage } = useFrierenCloud();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 720;
 
   async function choose(language: Language) {
     await selectLanguage(language);
@@ -14,68 +17,52 @@ export default function LanguageScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.content}>
-        <Text style={styles.eyebrow}>FRIERENCLOUD</Text>
+    <View style={styles.page}>
+      <View style={styles.card}>
+        <View style={styles.brandRow}>
+          <Image source={require("@/assets/images/icon.png")} style={styles.logo} />
+          <Text style={styles.brand}>FrierenCloud</Text>
+        </View>
+        <Text style={styles.eyebrow}>PREFERENCES</Text>
         <Text style={styles.title}>Choose your language</Text>
         <Text style={styles.titleVi}>Chọn ngôn ngữ</Text>
-        <Text style={styles.body}>
-          You can change this at any time from Settings.
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => void choose("en")}
-          style={styles.option}
-        >
-          <Text style={styles.optionTitle}>English</Text>
-          <Text style={styles.optionBody}>Continue in English</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => void choose("vi")}
-          style={styles.option}
-        >
-          <Text style={styles.optionTitle}>Tiếng Việt</Text>
-          <Text style={styles.optionBody}>Tiếp tục bằng tiếng Việt</Text>
-        </Pressable>
+        <Text style={styles.body}>Your selection is stored locally in this browser and can be changed later from Settings.</Text>
+
+        <View style={[styles.options, isWide && styles.optionsWide]}>
+          <LanguageOption icon="globe" label="English" detail="Continue in English" onPress={() => void choose("en")} />
+          <LanguageOption icon="type" label="Tiếng Việt" detail="Tiếp tục bằng tiếng Việt" onPress={() => void choose("vi")} />
+        </View>
       </View>
-    </SafeAreaView>
+    </View>
+  );
+}
+
+function LanguageOption({ detail, icon, label, onPress }: { detail: string; icon: "globe" | "type"; label: string; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.option, pressed && styles.optionPressed]}>
+      <View style={styles.optionIcon}><Feather color="#7FE1F6" name={icon} size={20} /></View>
+      <View style={styles.optionCopy}><Text style={styles.optionTitle}>{label}</Text><Text style={styles.optionBody}>{detail}</Text></View>
+      <Feather color="#B9B7E8" name="arrow-right" size={19} />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: "#12213C", flex: 1 },
-  content: { flex: 1, justifyContent: "center", padding: 24 },
-  eyebrow: {
-    color: "#43C6E8",
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 1.3,
-  },
-  title: {
-    color: "#F8FAFC",
-    fontSize: 30,
-    fontWeight: "700",
-    letterSpacing: -0.8,
-    marginTop: 14,
-  },
-  titleVi: { color: "#B9B7E8", fontSize: 22, fontWeight: "600", marginTop: 4 },
-  body: {
-    color: "#A7B4CC",
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 28,
-    marginTop: 16,
-  },
-  option: {
-    backgroundColor: "#1C2D4C",
-    borderColor: "#2B4168",
-    borderRadius: 16,
-    borderWidth: 1,
-    marginTop: 12,
-    minHeight: 78,
-    padding: 17,
-  },
-  optionTitle: { color: "#F8FAFC", fontSize: 18, fontWeight: "800" },
-  optionBody: { color: "#A7B4CC", fontSize: 13, marginTop: 5 },
+  page: { alignItems: "center", backgroundColor: "#101D35", flex: 1, justifyContent: "center", padding: 20 },
+  card: { backgroundColor: "#172743", borderColor: "#2D456D", borderRadius: 22, borderWidth: 1, maxWidth: 760, padding: 28, width: "100%" },
+  brandRow: { alignItems: "center", flexDirection: "row", gap: 10 },
+  logo: { borderRadius: 9, height: 36, width: 36 },
+  brand: { color: "#E9EEFA", fontSize: 16, fontWeight: "900" },
+  eyebrow: { color: "#7FE1F6", fontSize: 10, fontWeight: "900", letterSpacing: 1.2, marginTop: 32 },
+  title: { color: "#F5F8FF", fontSize: 31, fontWeight: "800", letterSpacing: -1, marginTop: 10 },
+  titleVi: { color: "#C9C6F4", fontSize: 21, fontWeight: "700", marginTop: 4 },
+  body: { color: "#A9B7D0", fontSize: 14, lineHeight: 21, marginTop: 16, maxWidth: 500 },
+  options: { gap: 12, marginTop: 26 },
+  optionsWide: { flexDirection: "row" },
+  option: { alignItems: "center", backgroundColor: "#0E1A30", borderColor: "#2B4267", borderRadius: 15, borderWidth: 1, flex: 1, flexDirection: "row", minHeight: 82, padding: 14 },
+  optionPressed: { opacity: 0.8, transform: [{ scale: 0.985 }] },
+  optionIcon: { alignItems: "center", backgroundColor: "#183D4A", borderRadius: 11, height: 42, justifyContent: "center", width: 42 },
+  optionCopy: { flex: 1, marginLeft: 12 },
+  optionTitle: { color: "#F5F8FF", fontSize: 16, fontWeight: "900" },
+  optionBody: { color: "#A9B7D0", fontSize: 12, marginTop: 4 },
 });

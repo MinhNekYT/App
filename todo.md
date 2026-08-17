@@ -39,3 +39,8 @@
 - [x] Chuyển Discord OAuth sang Supabase provider để không cần client secret trong app.
 - [x] Chuyển provision GitHub Actions, log và SSHX về app bằng token phụ trong bộ nhớ.
 - [x] Cập nhật tài liệu/build secrets, kiểm thử và đồng bộ kiến trúc app-only lên MinhNekYT/App.
+
+- [x] Chuyển cấu hình phát hành từ Android/iOS sang web-only.
+- [x] Thiết kế lại shell, điều hướng và các màn hình FrierenCloud cho web responsive.
+- [x] Tối ưu bố cục và tương tác cho điện thoại, máy tính bảng và máy tính.
+- [x] Cập nhật README/workflow build, kiểm thử các breakpoint và đồng bộ web app lên MinhNekYT/App.
