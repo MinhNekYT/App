@@ -1,16 +1,25 @@
-# Project TODO — LinuxVPS
+- [x] Cài dependencies hệ thống trước build trong GitHub Actions bằng bước apt-get phù hợp.
+- [x] Build APK/IPA hoàn toàn bằng GitHub Actions và đọc cấu hình từ Repository Secrets.
+- [x] Tạo nhiệm vụ phát hành sau build để upload artifact lên GitHub Release bằng GITHUB_TOKEN.
+- [x] Cập nhật tài liệu cách lấy EXPO_TOKEN và cấu hình toàn bộ Repository Secrets.
+- [x] Kiểm thử tĩnh workflow, đồng bộ cấu hình project và xác nhận các lệnh kiểm tra.
 
-- [x] Khởi tạo mã nguồn Expo/React Native cho Android và iOS.
-- [x] Thiết kế splash với logo FrierenCloud người dùng cung cấp và thương hiệu FrierenCloud.
-- [x] Tạo đăng nhập Google qua Supabase và quản lý phiên an toàn.
-- [x] Tạo màn hình chọn English hoặc Vietnamese sau đăng nhập.
-- [x] Xây dựng điều hướng đáy gồm VM Instances và Settings.
-- [x] Xây dựng danh sách VM cùng màn hình rỗng có nút tạo Linux VPS.
-- [x] Xây dựng biểu mẫu tên máy, token GitHub và xác nhận dùng token phụ.
-- [x] Tạo luồng yêu cầu GitHub Actions đặt hostname, cài SSHX và hiển thị log/link SSHX.
-- [x] Tích hợp lưu trữ dữ liệu VM trong bộ nhớ phiên và kiểm soát không lưu token GitHub.
-- [x] Viết kiểm thử, cấu hình build APK/IPA và kiểm tra dự án.
-- [x] Tạo icon ứng dụng FrierenCloud và cập nhật cấu hình thương hiệu.
-- [x] Đổi toàn bộ nhận diện ứng dụng sang FrierenCloud và dùng logo người dùng cung cấp cho icon, splash, favicon và adaptive icon.
-- [x] Nạp cấu hình Supabase từ GitHub Repository Secrets trong quy trình build APK/IPA.
-- [ ] Chủ sở hữu repository thêm EXPO_TOKEN, EXPO_PUBLIC_SUPABASE_URL và EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY trong Settings → Secrets and variables → Actions.
+- [x] Đổi toàn bộ thương hiệu LinuxDroid thành FrierenCloud và dùng logo người dùng cung cấp.
+- [x] Xây dựng splash logo, đăng nhập Google qua Supabase và quản lý phiên an toàn.
+- [x] Xây dựng chọn English/Tiếng Việt, VM Instances và thanh điều hướng hai tab.
+- [x] Xây dựng form tạo Linux VPS với tên máy, GitHub token phụ và checkbox xác nhận.
+- [x] Tạo luồng GitHub Actions đổi hostname, chạy SSHX, lấy log và hiển thị link SSHX.
+- [x] Hoàn thiện cấu hình build/release và kiểm thử trải nghiệm FrierenCloud.
+
+- [x] Viết README.md giới thiệu dự án FrierenCloud và toàn bộ luồng sử dụng.
+- [x] Tài liệu hóa cách tạo Expo token, Supabase keys và nhập Repository Secrets an toàn.
+- [x] Bổ sung cấu hình và hướng dẫn deploy phiên bản web FrierenCloud lên VPS.
+- [x] Kiểm tra tài liệu, lưu checkpoint và bàn giao thay đổi.
+
+- [x] Thiết kế API bridge và mô hình dữ liệu dùng chung cho Android, iOS và Web.
+- [x] Lưu và đồng bộ VM instances qua Supabase theo quyền người dùng.
+- [x] Tạo API bridge Node.js chạy cục bộ tại cổng 8000, với GET /health công khai và API VM dùng Supabase session.
+- [x] Kết nối web Vercel và app Android/iOS qua HTTPS API bridge mà không nhúng secret client-side.
+- [x] Thêm logo Google cho nút Continue with Google và ẩn logo app khỏi giao diện sau splash.
+- [x] Không dùng file `.env`, Base64 hoặc app bundle để lưu API secret.
+- [ ] Cập nhật hướng dẫn VPS/Vercel và đồng bộ bản hoàn chỉnh lên MinhNekYT/App.

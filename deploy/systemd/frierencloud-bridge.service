@@ -1,0 +1,25 @@
+[Unit]
+Description=FrierenCloud API bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=frierencloud
+Group=frierencloud
+WorkingDirectory=/opt/frierencloud
+Environment=PORT=8000
+Environment=ALLOWED_ORIGINS=https://YOUR_VERCEL_DOMAIN,https://YOUR_VPS_DOMAIN
+LoadCredential=supabase_url:/etc/frierencloud/credentials/supabase_url
+LoadCredential=supabase_service_role_key:/etc/frierencloud/credentials/supabase_service_role_key
+LoadCredential=github_bridge_token:/etc/frierencloud/credentials/github_bridge_token
+ExecStart=/usr/bin/node server/bridge/index.mjs
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/frierencloud
+
+[Install]
+WantedBy=multi-user.target
