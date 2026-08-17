@@ -32,3 +32,5 @@
 - [x] Loại bỏ static web export, Vercel và cấu hình bridge URL dành cho web.
 - [x] Triển khai Discord OAuth trực tiếp tại API bridge cho Android/iOS.
 - [x] Thiết lập session bridge và audit log an toàn trong api/logs.
+
+- [x] Sửa fallback session Discord để preview không gọi Expo SecureStore trên web.
