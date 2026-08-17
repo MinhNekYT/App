@@ -17,7 +17,6 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "qr": "node scripts/generate_qr.mjs",
-    "web:build": "expo export --platform web",
     "bridge:start": "node server/bridge/index.mjs"
   },
   "dependencies": {

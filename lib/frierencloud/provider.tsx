@@ -11,34 +11,34 @@ import {
   useState,
 } from "react";
 
-import { copyFor } from "./i18n";
 import {
   createSharedInstance,
+  discordAuthorizationUrl,
+  getDiscordProfile,
   isBridgeConfigured,
   listSharedInstances,
   refreshSharedInstance,
+  type DiscordProfile,
 } from "./bridge";
-import { isSupabaseConfigured, supabase } from "./supabase";
+import { copyFor } from "./i18n";
+import { discordSession } from "./session";
 import type { Language, VMInstance } from "./types";
 
-if (typeof window !== "undefined") {
-  WebBrowser.maybeCompleteAuthSession();
-}
+if (typeof window !== "undefined") WebBrowser.maybeCompleteAuthSession();
 
 type FrierenCloudContextValue = {
   booting: boolean;
   signedIn: boolean;
-  email: string | null;
+  accountName: string | null;
   language: Language;
   hasLanguage: boolean;
   repository: string;
   instances: VMInstance[];
   copy: ReturnType<typeof copyFor>;
-  supabaseConfigured: boolean;
   bridgeConfigured: boolean;
   selectLanguage: (language: Language) => Promise<void>;
   updateRepository: (repository: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithDiscord: () => Promise<boolean>;
   signOut: () => Promise<void>;
   createInstance: (name: string, token: string) => Promise<string>;
   refreshInstance: (id: string) => Promise<void>;
@@ -58,8 +58,8 @@ export function FrierenCloudProvider({
 }) {
   const router = useRouter();
   const [booting, setBooting] = useState(true);
-  const [signedIn, setSignedIn] = useState(false);
-  const [email, setEmail] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [profile, setProfile] = useState<DiscordProfile | null>(null);
   const [language, setLanguage] = useState<Language>("en");
   const [hasLanguage, setHasLanguage] = useState(false);
   const [repository, setRepository] = useState(
@@ -70,90 +70,79 @@ export function FrierenCloudProvider({
   useEffect(() => {
     let mounted = true;
     async function hydrate() {
-      const [storedLanguage, storedRepository, sessionResult] =
-        await Promise.all([
-          AsyncStorage.getItem(languageKey),
-          AsyncStorage.getItem(repositoryKey),
-          supabase.auth.getSession(),
-        ]);
+      const [storedLanguage, storedRepository, token] = await Promise.all([
+        AsyncStorage.getItem(languageKey),
+        AsyncStorage.getItem(repositoryKey),
+        discordSession.get(),
+      ]);
       if (!mounted) return;
       if (storedLanguage === "en" || storedLanguage === "vi") {
         setLanguage(storedLanguage);
         setHasLanguage(true);
       }
       if (storedRepository) setRepository(storedRepository);
-      const session = sessionResult.data.session;
-      setSignedIn(Boolean(session));
-      setEmail(session?.user.email ?? null);
-      if (session?.access_token && isBridgeConfigured) {
-        const remote = await listSharedInstances(session.access_token).catch(
-          () => [],
-        );
-        if (mounted) setInstances(remote);
+      if (token && isBridgeConfigured) {
+        const user = await getDiscordProfile(token).catch(() => null);
+        if (user) {
+          const remote = await listSharedInstances(token).catch(() => []);
+          if (mounted) {
+            setSessionToken(token);
+            setProfile(user);
+            setInstances(remote);
+          }
+        } else await discordSession.clear();
       }
-      setBooting(false);
+      if (mounted) setBooting(false);
     }
     void hydrate();
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setSignedIn(Boolean(session));
-      setEmail(session?.user.email ?? null);
-      if (session?.access_token && isBridgeConfigured) {
-        void listSharedInstances(session.access_token)
-          .then((remote) => mounted && setInstances(remote))
-          .catch(() => undefined);
-      }
-    });
     return () => {
       mounted = false;
-      data.subscription.unsubscribe();
     };
   }, []);
 
-  const selectLanguage = useCallback(async (nextLanguage: Language) => {
-    setLanguage(nextLanguage);
+  const selectLanguage = useCallback(async (next: Language) => {
+    setLanguage(next);
     setHasLanguage(true);
-    await AsyncStorage.setItem(languageKey, nextLanguage);
+    await AsyncStorage.setItem(languageKey, next);
+  }, []);
+  const updateRepository = useCallback(async (next: string) => {
+    const value = next.trim();
+    setRepository(value);
+    await AsyncStorage.setItem(repositoryKey, value);
   }, []);
 
-  const updateRepository = useCallback(async (nextRepository: string) => {
-    const normalized = nextRepository.trim();
-    setRepository(normalized);
-    await AsyncStorage.setItem(repositoryKey, normalized);
-  }, []);
-
-  const signInWithGoogle = useCallback(async () => {
-    if (!isSupabaseConfigured)
-      throw new Error("SUPABASE_CONFIGURATION_REQUIRED");
-    const redirectTo = Linking.createURL("auth/callback");
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo, skipBrowserRedirect: true },
-    });
-    if (error) throw error;
-    if (!data.url) throw new Error("Google sign-in URL was not returned.");
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-    if (result.type !== "success" || !result.url) return;
-    const code = new URL(result.url).searchParams.get("code");
-    if (!code)
-      throw new Error("Google sign-in did not return an authorization code.");
-    const { error: exchangeError } =
-      await supabase.auth.exchangeCodeForSession(code);
-    if (exchangeError) throw exchangeError;
+  const signInWithDiscord = useCallback(async () => {
+    const redirectUri = Linking.createURL("auth/discord");
+    const result = await WebBrowser.openAuthSessionAsync(
+      discordAuthorizationUrl(redirectUri),
+      redirectUri,
+    );
+    if (result.type !== "success" || !result.url) return false;
+    const token = new URL(result.url).searchParams.get("token");
+    if (!token) throw new Error("Discord sign-in did not return a session.");
+    const user = await getDiscordProfile(token);
+    await discordSession.set(token);
+    setSessionToken(token);
+    setProfile(user);
+    const remote = await listSharedInstances(token).catch(() => []);
+    setInstances(remote);
+    return true;
   }, []);
 
   const signOut = useCallback(async () => {
+    setSessionToken(null);
+    setProfile(null);
     setInstances([]);
-    await supabase.auth.signOut();
+    await discordSession.clear();
     router.replace("/");
   }, [router]);
-
+  const requireSession = useCallback(() => {
+    if (!sessionToken) throw new Error("Please sign in with Discord again.");
+    return sessionToken;
+  }, [sessionToken]);
   const createInstance = useCallback(
     async (name: string, token: string) => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session?.access_token)
-        throw new Error("Please sign in again before creating a session.");
-      const instance = await createSharedInstance(data.session.access_token, {
+      const instance = await createSharedInstance(requireSession(), {
         hostname: name,
         repository,
         secondaryGithubToken: token,
@@ -161,57 +150,53 @@ export function FrierenCloudProvider({
       setInstances((current) => [instance, ...current]);
       return instance.id;
     },
-    [repository],
+    [repository, requireSession],
   );
-
-  const refreshInstance = useCallback(async (id: string) => {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session?.access_token)
-      throw new Error("Please sign in again before refreshing setup logs.");
-    const update = await refreshSharedInstance(data.session.access_token, id);
-    setInstances((current) =>
-      current.map((item) => (item.id === id ? { ...item, ...update } : item)),
-    );
-  }, []);
+  const refreshInstance = useCallback(
+    async (id: string) => {
+      const update = await refreshSharedInstance(requireSession(), id);
+      setInstances((current) =>
+        current.map((item) => (item.id === id ? { ...item, ...update } : item)),
+      );
+    },
+    [requireSession],
+  );
 
   const value = useMemo(
     () => ({
       booting,
-      signedIn,
-      email,
+      signedIn: Boolean(sessionToken),
+      accountName: profile?.username ?? null,
       language,
       hasLanguage,
       repository,
       instances,
       copy: copyFor(language),
-      supabaseConfigured: isSupabaseConfigured,
       bridgeConfigured: isBridgeConfigured,
       selectLanguage,
       updateRepository,
-      signInWithGoogle,
+      signInWithDiscord,
       signOut,
       createInstance,
       refreshInstance,
-      getInstance: (id: string) =>
-        instances.find((instance) => instance.id === id),
+      getInstance: (id: string) => instances.find((item) => item.id === id),
     }),
     [
       booting,
-      signedIn,
-      email,
+      sessionToken,
+      profile,
       language,
       hasLanguage,
       repository,
       instances,
       selectLanguage,
       updateRepository,
-      signInWithGoogle,
+      signInWithDiscord,
       signOut,
       createInstance,
       refreshInstance,
     ],
   );
-
   return (
     <FrierenCloudContext.Provider value={value}>
       {children}

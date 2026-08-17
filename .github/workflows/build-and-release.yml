@@ -33,8 +33,6 @@ jobs:
     env:
       APP_VERSION: ${{ inputs.version }}
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       EXPO_PUBLIC_GITHUB_REPOSITORY: ${{ secrets.EXPO_PUBLIC_GITHUB_REPOSITORY }}
       EXPO_PUBLIC_BRIDGE_URL: ${{ secrets.EXPO_PUBLIC_BRIDGE_URL }}
       # Optional: a user-created PAT may be stored as RELEASE_GITHUB_TOKEN.
@@ -81,8 +79,6 @@ jobs:
         shell: bash
         run: |
           test -n "$EXPO_TOKEN" || (echo "Missing EXPO_TOKEN repository secret." && exit 1)
-          test -n "$EXPO_PUBLIC_SUPABASE_URL" || (echo "Missing EXPO_PUBLIC_SUPABASE_URL repository secret." && exit 1)
-          test -n "$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY" || (echo "Missing EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY repository secret." && exit 1)
           test -n "$EXPO_PUBLIC_GITHUB_REPOSITORY" || (echo "Missing EXPO_PUBLIC_GITHUB_REPOSITORY repository secret." && exit 1)
           test -n "$EXPO_PUBLIC_BRIDGE_URL" || (echo "Missing EXPO_PUBLIC_BRIDGE_URL repository secret." && exit 1)
 

@@ -9,10 +9,14 @@ User=frierencloud
 Group=frierencloud
 WorkingDirectory=/opt/frierencloud
 Environment=PORT=8000
-Environment=ALLOWED_ORIGINS=https://YOUR_VERCEL_DOMAIN,https://YOUR_VPS_DOMAIN
+Environment=MOBILE_REDIRECT_URI=frierencloud://auth/discord
 LoadCredential=supabase_url:/etc/frierencloud/credentials/supabase_url
 LoadCredential=supabase_service_role_key:/etc/frierencloud/credentials/supabase_service_role_key
 LoadCredential=github_bridge_token:/etc/frierencloud/credentials/github_bridge_token
+LoadCredential=discord_client_id:/etc/frierencloud/credentials/discord_client_id
+LoadCredential=discord_client_secret:/etc/frierencloud/credentials/discord_client_secret
+LoadCredential=discord_redirect_uri:/etc/frierencloud/credentials/discord_redirect_uri
+LoadCredential=session_secret:/etc/frierencloud/credentials/session_secret
 ExecStart=/usr/bin/node server/bridge/index.mjs
 Restart=always
 RestartSec=5

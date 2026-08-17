@@ -10,8 +10,8 @@ const messages = {
       "Create a temporary Linux session and follow the setup in real time.",
     signInTitle: "Your cloud console, simply arranged.",
     signInBody:
-      "Sign in with Google to continue to your private session dashboard.",
-    google: "Continue with Google",
+      "Sign in with Discord to continue to your private session dashboard.",
+    discord: "Continue with Discord",
     chooseLanguage: "Choose your language",
     languageBody: "You can change this at any time from Settings.",
     profile: "Profile",
@@ -31,8 +31,8 @@ const messages = {
       "Tạo một phiên Linux tạm thời và theo dõi quá trình thiết lập theo thời gian thực.",
     signInTitle: "Bảng điều khiển cloud của bạn, được sắp xếp đơn giản.",
     signInBody:
-      "Đăng nhập bằng Google để tiếp tục tới bảng điều khiển phiên riêng của bạn.",
-    google: "Tiếp tục với Google",
+      "Đăng nhập bằng Discord để tiếp tục tới bảng điều khiển phiên riêng của bạn.",
+    discord: "Tiếp tục với Discord",
     chooseLanguage: "Chọn ngôn ngữ",
     languageBody:
       "Bạn có thể thay đổi lựa chọn này bất cứ lúc nào trong Cài đặt.",

@@ -15,7 +15,7 @@ import {
 import { useFrierenCloud } from "@/lib/frierencloud/provider";
 
 export default function SettingsScreen() {
-  const { email, language, repository, updateRepository, signOut, copy } =
+  const { accountName, language, repository, updateRepository, signOut, copy } =
     useFrierenCloud();
   const [draftRepository, setDraftRepository] = useState(repository);
 
@@ -41,7 +41,7 @@ export default function SettingsScreen() {
           <Text style={styles.title}>{copy.settings}</Text>
           <View style={styles.card}>
             <Text style={styles.label}>{copy.profile}</Text>
-            <Text style={styles.value}>{email ?? "Signed-in account"}</Text>
+            <Text style={styles.value}>{accountName ?? "Discord account"}</Text>
           </View>
           <View style={styles.card}>
             <Text style={styles.label}>{copy.language}</Text>
@@ -72,8 +72,8 @@ export default function SettingsScreen() {
           </View>
           <View style={styles.notice}>
             <Text style={styles.noticeText}>
-              GitHub tokens used for VM setup are never saved on the device or
-              sent to Supabase.
+              GitHub tokens used for VM setup are sent one time to the API
+              bridge and are never saved on the device or in shared data.
             </Text>
           </View>
           <Pressable

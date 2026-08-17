@@ -1,4 +1,4 @@
-import { FontAwesome } from "@expo/vector-icons";
+import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -15,23 +15,24 @@ import { useFrierenCloud } from "@/lib/frierencloud/provider";
 
 export default function SignInScreen() {
   const router = useRouter();
-  const { signInWithGoogle, supabaseConfigured, copy } = useFrierenCloud();
+  const { signInWithDiscord, bridgeConfigured, copy } = useFrierenCloud();
   const [loading, setLoading] = useState(false);
 
   async function signIn() {
     try {
       setLoading(true);
-      await signInWithGoogle();
-      router.replace("/language" as never);
+      const complete = await signInWithDiscord();
+      if (complete) router.replace("/language" as never);
     } catch (error) {
       Alert.alert(
         "FrierenCloud",
         error instanceof Error &&
-          error.message === "SUPABASE_CONFIGURATION_REQUIRED"
-          ? "Google sign-in needs Supabase configuration from repository build secrets."
+          error.message ===
+            "The Discord API bridge has not been configured for this build."
+          ? "Discord sign-in needs the API bridge URL in the mobile build configuration."
           : error instanceof Error
             ? error.message
-            : "Unable to complete Google sign-in.",
+            : "Unable to complete Discord sign-in.",
       );
     } finally {
       setLoading(false);
@@ -58,15 +59,16 @@ export default function SignInScreen() {
             {loading ? (
               <ActivityIndicator color="#12213C" />
             ) : (
-              <View style={styles.googleContent}>
-                <FontAwesome color="#4285F4" name="google" size={19} />
-                <Text style={styles.buttonText}>{copy.google}</Text>
+              <View style={styles.discordContent}>
+                <FontAwesome5 color="#5865F2" name="discord" size={21} />
+                <Text style={styles.buttonText}>{copy.discord}</Text>
               </View>
             )}
           </Pressable>
-          {!supabaseConfigured ? (
+          {!bridgeConfigured ? (
             <Text style={styles.hint}>
-              Supabase secrets have not been loaded into this build yet.
+              The Discord API bridge URL has not been loaded into this build
+              yet.
             </Text>
           ) : null}
         </View>
@@ -104,7 +106,7 @@ const styles = StyleSheet.create({
     minHeight: 54,
   },
   buttonText: { color: "#12213C", fontSize: 16, fontWeight: "800" },
-  googleContent: { alignItems: "center", flexDirection: "row", gap: 10 },
+  discordContent: { alignItems: "center", flexDirection: "row", gap: 10 },
   hint: {
     color: "#A7B4CC",
     fontSize: 12,

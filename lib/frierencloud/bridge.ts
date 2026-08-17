@@ -3,6 +3,8 @@ import type { VMInstance } from "./types";
 const bridgeUrl = process.env.EXPO_PUBLIC_BRIDGE_URL?.replace(/\/$/, "");
 export const isBridgeConfigured = Boolean(bridgeUrl);
 
+export type DiscordProfile = { id: string; username: string | null };
+
 async function request<T>(
   path: string,
   accessToken: string,
@@ -52,4 +54,18 @@ export async function refreshSharedInstance(accessToken: string, id: string) {
       { method: "POST", body: "{}" },
     )
   ).instance;
+}
+
+export function discordAuthorizationUrl(redirectUri: string) {
+  if (!bridgeUrl)
+    throw new Error(
+      "The Discord API bridge has not been configured for this build.",
+    );
+  return `${bridgeUrl}/auth/discord/start?redirect_uri=${encodeURIComponent(redirectUri)}`;
+}
+
+export async function getDiscordProfile(accessToken: string) {
+  return (
+    await request<{ user: DiscordProfile }>("/api/v1/auth/me", accessToken)
+  ).user;
 }
