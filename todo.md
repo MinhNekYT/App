@@ -1,46 +1,23 @@
-- [x] Cài dependencies hệ thống trước build trong GitHub Actions bằng bước apt-get phù hợp.
-- [x] Build APK/IPA hoàn toàn bằng GitHub Actions và đọc cấu hình từ Repository Secrets.
-- [x] Tạo nhiệm vụ phát hành sau build để upload artifact lên GitHub Release bằng GITHUB_TOKEN.
-- [x] Cập nhật tài liệu cách lấy EXPO_TOKEN và cấu hình toàn bộ Repository Secrets.
-- [x] Kiểm thử tĩnh workflow, đồng bộ cấu hình project và xác nhận các lệnh kiểm tra.
+# Project TODO
 
-- [x] Đổi toàn bộ thương hiệu LinuxDroid thành FrierenCloud và dùng logo người dùng cung cấp.
-- [x] Xây dựng splash logo, đăng nhập Google qua Supabase và quản lý phiên an toàn.
-- [x] Xây dựng chọn English/Tiếng Việt, VM Instances và thanh điều hướng hai tab.
-- [x] Xây dựng form tạo Linux VPS với tên máy, GitHub token phụ và checkbox xác nhận.
-- [x] Tạo luồng GitHub Actions đổi hostname, chạy SSHX, lấy log và hiển thị link SSHX.
-- [x] Hoàn thiện cấu hình build/release và kiểm thử trải nghiệm FrierenCloud.
-
-- [x] Viết README.md giới thiệu dự án FrierenCloud và toàn bộ luồng sử dụng.
-- [x] Tài liệu hóa cách tạo Expo token, Supabase keys và nhập Repository Secrets an toàn.
-- [x] Bổ sung cấu hình và hướng dẫn deploy phiên bản web FrierenCloud lên VPS.
-- [x] Kiểm tra tài liệu, lưu checkpoint và bàn giao thay đổi.
-
-- [x] Thiết kế API bridge và mô hình dữ liệu dùng chung cho Android, iOS và Web.
-- [x] Lưu và đồng bộ VM instances qua Supabase theo quyền người dùng.
-- [x] Tạo API bridge Node.js chạy cục bộ tại cổng 8000, với GET /health công khai và API VM dùng Supabase session.
-- [x] Kết nối web Vercel và app Android/iOS qua HTTPS API bridge mà không nhúng secret client-side.
-- [x] Thêm logo Google cho nút Continue with Google và ẩn logo app khỏi giao diện sau splash.
-- [x] Không dùng file `.env`, Base64 hoặc app bundle để lưu API secret.
-- [x] Cập nhật hướng dẫn VPS/Vercel và đồng bộ bản hoàn chỉnh lên MinhNekYT/App.
-
-- [x] Chuyển đăng nhập từ Google/Supabase sang Discord OAuth.
-- [x] Thêm audit log hoạt động API vào api/logs mà không ghi token hoặc dữ liệu nhạy cảm.
-- [x] Cập nhật UI, hướng dẫn Discord/VPS và kiểm thử luồng đăng nhập mới.
-- [x] Đồng bộ thay đổi Discord lên MinhNekYT/App và lưu checkpoint.
-
-- [x] Loại bỏ static web export, Vercel và cấu hình bridge URL dành cho web.
-- [x] Triển khai Discord OAuth trực tiếp tại API bridge cho Android/iOS.
-- [x] Thiết lập session bridge và audit log an toàn trong api/logs.
-
-- [x] Sửa fallback session Discord để preview không gọi Expo SecureStore trên web.
-
-- [x] Loại bỏ API bridge/worker VPS, systemd, Nginx và audit log runtime.
-- [x] Chuyển Discord OAuth sang Supabase provider để không cần client secret trong app.
-- [x] Chuyển provision GitHub Actions, log và SSHX về app bằng token phụ trong bộ nhớ.
-- [x] Cập nhật tài liệu/build secrets, kiểm thử và đồng bộ kiến trúc app-only lên MinhNekYT/App.
-
-- [x] Chuyển cấu hình phát hành từ Android/iOS sang web-only.
-- [x] Thiết kế lại shell, điều hướng và các màn hình FrierenCloud cho web responsive.
-- [x] Tối ưu bố cục và tương tác cho điện thoại, máy tính bảng và máy tính.
-- [x] Cập nhật README/workflow build, kiểm thử các breakpoint và đồng bộ web app lên MinhNekYT/App.
+- [x] Thiết kế dữ liệu VM instance và phiên tạo workflow có trạng thái, thời gian tạo và đường dẫn SSHX thực tế.
+- [x] Triển khai Discord OAuth2 với callback an toàn, session ứng dụng và tự chuyển vào VM Instances sau khi đăng nhập.
+- [x] Xây dựng khung giao diện FrierenCloud theo phong cách architectural blueprint với bottom navigation chỉ gồm VM Instances và Settings.
+- [x] Xây dựng trạng thái trống VM Instances với nút chính xác "Tạo một Linux VPS" và luồng điều hướng sang màn tạo máy.
+- [x] Xây dựng form tạo Linux VPS gồm tên máy, GitHub token không lưu lâu dài, checkbox xác nhận bắt buộc và nút "Xác nhận".
+- [x] Kết nối GitHub Actions qua API để truyền hostname đã xác thực, kích hoạt workflow và không làm lộ GitHub token ở trình duyệt hoặc log.
+- [x] Thêm workflow GitHub Actions thay hostname và chạy chính xác lệnh `curl -sSf https://sshx.io/get | sh && sshx`.
+- [x] Hiển thị log workflow cập nhật theo thời gian thực và trích link SSHX từ output thực tế khi hoàn tất.
+- [x] Cấu hình favicon, ảnh thương hiệu FrierenCloud và metadata ứng dụng từ tài sản người dùng cung cấp hoặc tài sản thay thế phù hợp.
+- [x] Hoàn thiện Settings, trạng thái lỗi/rỗng/tải, khả năng truy cập bàn phím và responsive cho mobile, tablet, PC.
+- [x] Viết và chạy Vitest cho validation tạo VM, không rò rỉ token và parser URL SSHX.
+- [x] Kiểm tra bằng giao diện thực trên desktop, tablet và mobile; sửa các lỗi phát hiện.
+- [x] Thêm ví dụ biến môi trường và cấu hình deploy tương thích Vercel, không đưa khóa bí mật vào mã nguồn hoặc client bundle.
+- [x] Bổ sung hướng dẫn chuyển đổi callback Discord OAuth2 khi dùng tên miền Vercel và khi dùng tên miền tích hợp của FrierenCloud.
+- [x] Hoàn tất cấu hình Discord OAuth2 bằng Client ID, Client Secret và callback URL do người dùng cung cấp.
+- [ ] Sao chép workflow SSHX vào repository runner và kiểm tra lần chạy GitHub Actions đầu tiên với token có quyền phù hợp.
+- [ ] Khai báo trực tiếp biến Discord OAuth2 trong tệp `.env` bảo mật của project theo giá trị người dùng cung cấp.
+- [ ] Tạo tệp `.env` trống không chứa bí mật để đưa vào repository MinhNek/App theo yêu cầu.
+- [ ] Đồng bộ toàn bộ mã nguồn FrierenCloud đã kiểm thử lên repository MinhNek/App và xác minh commit đích.
+- [ ] Đồng bộ toàn bộ mã nguồn FrierenCloud đã kiểm thử lên repository riêng tư MinhNekYT/App và xác minh commit đích.
+- [x] Kiểm tra build production và cấu trúc API/static assets để bảo đảm có thể triển khai trên Vercel.

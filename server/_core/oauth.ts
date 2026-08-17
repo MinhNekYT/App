@@ -1,68 +1,54 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.js";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import axios from "axios";
+import { randomBytes } from "crypto";
+import { parse as parseCookieHeader } from "cookie";
 import type { Express, Request, Response } from "express";
-import { getUserByOpenId, upsertUser } from "../db";
+import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
+import { ENV } from "./env";
+
+const DISCORD_STATE_COOKIE = "frierencloud_discord_state";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
   return typeof value === "string" ? value : undefined;
 }
 
-async function syncUser(userInfo: {
-  openId?: string | null;
-  name?: string | null;
-  email?: string | null;
-  loginMethod?: string | null;
-  platform?: string | null;
-}) {
-  if (!userInfo.openId) {
-    throw new Error("openId missing from user info");
-  }
-
-  const lastSignedIn = new Date();
-  await upsertUser({
-    openId: userInfo.openId,
-    name: userInfo.name || null,
-    email: userInfo.email ?? null,
-    loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-    lastSignedIn,
-  });
-  const saved = await getUserByOpenId(userInfo.openId);
-  return (
-    saved ?? {
-      openId: userInfo.openId,
-      name: userInfo.name,
-      email: userInfo.email,
-      loginMethod: userInfo.loginMethod ?? null,
-      lastSignedIn,
-    }
-  );
+function callbackUri(req: Request) {
+  if (ENV.discordRedirectUri) return ENV.discordRedirectUri;
+  const proto = (req.headers["x-forwarded-proto"] as string | undefined) ?? req.protocol ?? "https";
+  return `${proto}://${req.get("host")}/api/auth/discord/callback`;
 }
 
-function buildUserResponse(
-  user:
-    | Awaited<ReturnType<typeof getUserByOpenId>>
-    | {
-        openId: string;
-        name?: string | null;
-        email?: string | null;
-        loginMethod?: string | null;
-        lastSignedIn?: Date | null;
-      },
-) {
-  return {
-    id: (user as any)?.id ?? null,
-    openId: user?.openId ?? null,
-    name: user?.name ?? null,
-    email: user?.email ?? null,
-    loginMethod: user?.loginMethod ?? null,
-    lastSignedIn: (user?.lastSignedIn ?? new Date()).toISOString(),
-  };
+function isSecure(req: Request) {
+  return req.secure || req.headers["x-forwarded-proto"] === "https";
 }
 
 export function registerOAuthRoutes(app: Express) {
-  app.get("/api/oauth/callback", async (req: Request, res: Response) => {
+  app.get("/api/auth/discord/login", (req: Request, res: Response) => {
+    if (!ENV.discordClientId || !ENV.discordClientSecret) {
+      res.status(503).json({ error: "Discord OAuth2 chưa được cấu hình." });
+      return;
+    }
+    const state = randomBytes(32).toString("hex");
+    res.cookie(DISCORD_STATE_COOKIE, state, {
+      httpOnly: true,
+      path: "/",
+      maxAge: 10 * 60 * 1_000,
+      sameSite: "lax",
+      secure: isSecure(req),
+    });
+    const url = new URL("https://discord.com/oauth2/authorize");
+    url.searchParams.set("client_id", ENV.discordClientId);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("redirect_uri", callbackUri(req));
+    url.searchParams.set("scope", "identify");
+    url.searchParams.set("state", state);
+    res.redirect(302, url.toString());
+  });
+
+  app.get("/api/auth/discord/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
 
@@ -71,104 +57,51 @@ export function registerOAuthRoutes(app: Express) {
       return;
     }
 
-    try {
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-      await syncUser(userInfo);
-      const sessionToken = await sdk.createSessionToken(userInfo.openId!, {
-        name: userInfo.name || "",
-        expiresInMs: ONE_YEAR_MS,
-      });
-
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
-      // Redirect to the frontend URL (Expo web on port 8081)
-      // Cookie is set with parent domain so it works across both 3000 and 8081 subdomains
-      const frontendUrl =
-        process.env.EXPO_WEB_PREVIEW_URL ||
-        process.env.EXPO_PACKAGER_PROXY_URL ||
-        "http://localhost:8081";
-      res.redirect(302, frontendUrl);
-    } catch (error) {
-      console.error("[OAuth] Callback failed", error);
-      res.status(500).json({ error: "OAuth callback failed" });
-    }
-  });
-
-  app.get("/api/oauth/mobile", async (req: Request, res: Response) => {
-    const code = getQueryParam(req, "code");
-    const state = getQueryParam(req, "state");
-
-    if (!code || !state) {
-      res.status(400).json({ error: "code and state are required" });
+    const expectedState = parseCookieHeader(req.headers.cookie ?? "")[DISCORD_STATE_COOKIE];
+    if (!expectedState || state !== expectedState) {
+      res.status(403).json({ error: "invalid oauth state" });
       return;
     }
+    res.clearCookie(DISCORD_STATE_COOKIE, { path: "/", secure: isSecure(req), sameSite: "lax" });
 
     try {
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-      const user = await syncUser(userInfo);
+      const tokenResponse = await axios.post<{ access_token: string }>(
+        "https://discord.com/api/oauth2/token",
+        new URLSearchParams({
+          client_id: ENV.discordClientId,
+          client_secret: ENV.discordClientSecret,
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: callbackUri(req),
+        }).toString(),
+        { headers: { "content-type": "application/x-www-form-urlencoded" }, timeout: 15_000 }
+      );
+      const profileResponse = await axios.get<{ id: string; username: string; global_name?: string | null }>(
+        "https://discord.com/api/users/@me",
+        { headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` }, timeout: 15_000 }
+      );
+      const userInfo = profileResponse.data;
+      const openId = `discord_${userInfo.id}`;
 
-      const sessionToken = await sdk.createSessionToken(userInfo.openId!, {
-        name: userInfo.name || "",
+      await db.upsertUser({
+        openId,
+        name: userInfo.global_name || userInfo.username || null,
+        loginMethod: "discord",
+        lastSignedIn: new Date(),
+      });
+
+      const sessionToken = await sdk.createSessionToken(openId, {
+        name: userInfo.global_name || userInfo.username || "Discord user",
         expiresInMs: ONE_YEAR_MS,
       });
 
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      res.json({
-        app_session_id: sessionToken,
-        user: buildUserResponse(user),
-      });
+      res.redirect(302, "/vm-instances");
     } catch (error) {
-      console.error("[OAuth] Mobile exchange failed", error);
-      res.status(500).json({ error: "OAuth mobile exchange failed" });
-    }
-  });
-
-  app.post("/api/auth/logout", (req: Request, res: Response) => {
-    const cookieOptions = getSessionCookieOptions(req);
-    res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-    res.json({ success: true });
-  });
-
-  // Get current authenticated user - works with both cookie (web) and Bearer token (mobile)
-  app.get("/api/auth/me", async (req: Request, res: Response) => {
-    try {
-      const user = await sdk.authenticateRequest(req);
-      res.json({ user: buildUserResponse(user) });
-    } catch (error) {
-      console.error("[Auth] /api/auth/me failed:", error);
-      res.status(401).json({ error: "Not authenticated", user: null });
-    }
-  });
-
-  // Establish session cookie from Bearer token
-  // Used by iframe preview: frontend receives token via postMessage, then calls this endpoint
-  // to get a proper Set-Cookie response from the backend (3000-xxx domain)
-  app.post("/api/auth/session", async (req: Request, res: Response) => {
-    try {
-      // Authenticate using Bearer token from Authorization header
-      const user = await sdk.authenticateRequest(req);
-
-      // Get the token from the Authorization header to set as cookie
-      const authHeader = req.headers.authorization || req.headers.Authorization;
-      if (typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
-        res.status(400).json({ error: "Bearer token required" });
-        return;
-      }
-      const token = authHeader.slice("Bearer ".length).trim();
-
-      // Set cookie for this domain (3000-xxx)
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
-      res.json({ success: true, user: buildUserResponse(user) });
-    } catch (error) {
-      console.error("[Auth] /api/auth/session failed:", error);
-      res.status(401).json({ error: "Invalid token" });
+      console.error("[Discord OAuth] Callback failed", error);
+      res.status(500).json({ error: "Discord OAuth callback failed" });
     }
   });
 }

@@ -19,7 +19,7 @@ export type FileContent = {
   type: "file_url";
   file_url: {
     url: string;
-    mime_type?: "audio/mpeg" | "audio/wav" | "application/pdf" | "audio/mp4" | "video/mp4";
+    mime_type?: "audio/mpeg" | "audio/wav" | "application/pdf" | "audio/mp4" | "video/mp4" ;
   };
 };
 
@@ -50,7 +50,10 @@ export type ToolChoiceExplicit = {
   };
 };
 
-export type ToolChoice = ToolChoicePrimitive | ToolChoiceByName | ToolChoiceExplicit;
+export type ToolChoice =
+  | ToolChoicePrimitive
+  | ToolChoiceByName
+  | ToolChoiceExplicit;
 
 export type InvokeParams = {
   messages: Message[];
@@ -110,10 +113,13 @@ export type ResponseFormat =
   | { type: "json_object" }
   | { type: "json_schema"; json_schema: JsonSchema };
 
-const ensureArray = (value: MessageContent | MessageContent[]): MessageContent[] =>
-  Array.isArray(value) ? value : [value];
+const ensureArray = (
+  value: MessageContent | MessageContent[]
+): MessageContent[] => (Array.isArray(value) ? value : [value]);
 
-const normalizeContentPart = (part: MessageContent): TextContent | ImageContent | FileContent => {
+const normalizeContentPart = (
+  part: MessageContent
+): TextContent | ImageContent | FileContent => {
   if (typeof part === "string") {
     return { type: "text", text: part };
   }
@@ -138,7 +144,7 @@ const normalizeMessage = (message: Message) => {
 
   if (role === "tool" || role === "function") {
     const content = ensureArray(message.content)
-      .map((part) => (typeof part === "string" ? part : JSON.stringify(part)))
+      .map(part => (typeof part === "string" ? part : JSON.stringify(part)))
       .join("\n");
 
     return {
@@ -169,7 +175,7 @@ const normalizeMessage = (message: Message) => {
 
 const normalizeToolChoice = (
   toolChoice: ToolChoice | undefined,
-  tools: Tool[] | undefined,
+  tools: Tool[] | undefined
 ): "none" | "auto" | ToolChoiceExplicit | undefined => {
   if (!toolChoice) return undefined;
 
@@ -179,12 +185,14 @@ const normalizeToolChoice = (
 
   if (toolChoice === "required") {
     if (!tools || tools.length === 0) {
-      throw new Error("tool_choice 'required' was provided but no tools were configured");
+      throw new Error(
+        "tool_choice 'required' was provided but no tools were configured"
+      );
     }
 
     if (tools.length > 1) {
       throw new Error(
-        "tool_choice 'required' needs a single tool or specify the tool name explicitly",
+        "tool_choice 'required' needs a single tool or specify the tool name explicitly"
       );
     }
 
@@ -232,8 +240,13 @@ const normalizeResponseFormat = ({
   | undefined => {
   const explicitFormat = responseFormat || response_format;
   if (explicitFormat) {
-    if (explicitFormat.type === "json_schema" && !explicitFormat.json_schema?.schema) {
-      throw new Error("responseFormat json_schema requires a defined schema object");
+    if (
+      explicitFormat.type === "json_schema" &&
+      !explicitFormat.json_schema?.schema
+    ) {
+      throw new Error(
+        "responseFormat json_schema requires a defined schema object"
+      );
     }
     return explicitFormat;
   }
@@ -261,7 +274,8 @@ const RETRY_MAX_DELAY_MS = 30_000;
 
 type FetchInit = NonNullable<Parameters<typeof fetch>[1]>;
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) =>
+  new Promise<void>(resolve => setTimeout(resolve, ms));
 
 const parseRetryAfter = (value: string | null): number | undefined => {
   if (!value) return undefined;
@@ -271,18 +285,24 @@ const parseRetryAfter = (value: string | null): number | undefined => {
   return Number.isNaN(at) ? undefined : Math.max(0, at - Date.now());
 };
 
-// Equal-jitter exponential backoff. The cap/2 floor guarantees a minimum delay so a
-// misbehaving caller loop slows down instead of hammering the upstream while it keeps
-// returning errors.
-const computeBackoffDelay = (attempt: number, retryAfterMs?: number): number => {
+// Equal-jitter exponential backoff. The cap/2 floor guarantees a minimum
+// delay so a misbehaving caller loop slows down instead of hammering the
+// upstream while it keeps returning errors.
+const computeBackoffDelay = (
+  attempt: number,
+  retryAfterMs?: number
+): number => {
   const cap = Math.min(RETRY_BASE_DELAY_MS * 2 ** attempt, RETRY_MAX_DELAY_MS);
   const jittered = cap / 2 + Math.random() * (cap / 2);
   return Math.min(Math.max(jittered, retryAfterMs ?? 0), RETRY_MAX_DELAY_MS);
 };
 
-// Retries non-2xx responses and network errors with exponential backoff, then returns
-// the final Response so callers keep their existing error handling.
-const fetchWithBackoff = async (url: string, init: FetchInit): Promise<Response> => {
+// Retries non-2xx responses and network errors with exponential backoff, then
+// returns the final Response so callers keep their existing error handling.
+const fetchWithBackoff = async (
+  url: string,
+  init: FetchInit
+): Promise<Response> => {
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= RETRY_MAX_RETRIES; attempt++) {
@@ -292,21 +312,23 @@ const fetchWithBackoff = async (url: string, init: FetchInit): Promise<Response>
         return response;
       }
 
-      const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
+      const retryAfterMs = parseRetryAfter(
+        response.headers.get("retry-after")
+      );
       try {
         await response.body?.cancel();
       } catch {
         // Body already settled; nothing to clean up.
       }
       console.warn(
-        `LLM request retry ${attempt + 1}/${RETRY_MAX_RETRIES} after status ${response.status}`,
+        `LLM request retry ${attempt + 1}/${RETRY_MAX_RETRIES} after status ${response.status}`
       );
       await sleep(computeBackoffDelay(attempt, retryAfterMs));
     } catch (error) {
       lastError = error;
       if (attempt === RETRY_MAX_RETRIES) throw error;
       console.warn(
-        `LLM request retry ${attempt + 1}/${RETRY_MAX_RETRIES} after network error`,
+        `LLM request retry ${attempt + 1}/${RETRY_MAX_RETRIES} after network error`
       );
       await sleep(computeBackoffDelay(attempt));
     }
@@ -348,7 +370,10 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tools = tools;
   }
 
-  const normalizedToolChoice = normalizeToolChoice(toolChoice || tool_choice, tools);
+  const normalizedToolChoice = normalizeToolChoice(
+    toolChoice || tool_choice,
+    tools
+  );
   if (normalizedToolChoice) {
     payload.tool_choice = normalizedToolChoice;
   }
@@ -387,7 +412,9 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`);
+    throw new Error(
+      `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
+    );
   }
 
   return (await response.json()) as InvokeResult;
@@ -408,10 +435,9 @@ export type ModelsResponse = {
 export async function listLLMModels(): Promise<ModelsResponse> {
   assertApiKey();
 
-  const url =
-    ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-      ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
-      : "https://forge.manus.im/v1/models";
+  const url = ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
+    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
+    : "https://forge.manus.im/v1/models";
 
   const response = await fetchWithBackoff(url, {
     headers: { authorization: `Bearer ${ENV.forgeApiKey}` },
@@ -420,7 +446,7 @@ export async function listLLMModels(): Promise<ModelsResponse> {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(
-      `List LLM models failed: ${response.status} ${response.statusText} – ${errorText}`,
+      `List LLM models failed: ${response.status} ${response.statusText} – ${errorText}`
     );
   }
 

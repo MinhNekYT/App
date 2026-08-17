@@ -1,7 +1,15 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
-import { ENV } from "./_core/env";
+import {
+  InsertUser,
+  userGithubSettings,
+  users,
+  vmInstances,
+  vmLogs,
+  type VmInstance,
+  type UserGithubSettings,
+} from "../drizzle/schema";
+import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -56,8 +64,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
-      values.role = "admin";
-      updateSet.role = "admin";
+      values.role = 'admin';
+      updateSet.role = 'admin';
     }
 
     if (!values.lastSignedIn) {
@@ -89,4 +97,91 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+function requireDatabase<T>(db: T): asserts db is NonNullable<T> {
+  if (!db) throw new Error("Cơ sở dữ liệu chưa sẵn sàng.");
+}
+
+export async function listVmInstances(userId: number) {
+  const db = await getDb();
+  requireDatabase(db);
+  return db.select().from(vmInstances).where(eq(vmInstances.userId, userId)).orderBy(desc(vmInstances.updatedAt));
+}
+
+export async function getVmForUser(instanceId: number, userId: number) {
+  const db = await getDb();
+  requireDatabase(db);
+  const result = await db.select().from(vmInstances).where(and(eq(vmInstances.id, instanceId), eq(vmInstances.userId, userId))).limit(1);
+  return result[0];
+}
+
+export async function getVmById(instanceId: number) {
+  const db = await getDb();
+  requireDatabase(db);
+  const result = await db.select().from(vmInstances).where(eq(vmInstances.id, instanceId)).limit(1);
+  return result[0];
+}
+
+export async function getVmLogs(instanceId: number) {
+  const db = await getDb();
+  requireDatabase(db);
+  return db.select().from(vmLogs).where(eq(vmLogs.instanceId, instanceId)).orderBy(vmLogs.id);
+}
+
+export async function createVmInstance(input: {
+  userId: number;
+  hostname: string;
+  githubOwner: string;
+  githubRepo: string;
+  workflowFile: string;
+}): Promise<VmInstance> {
+  const db = await getDb();
+  requireDatabase(db);
+  const result = await db.insert(vmInstances).values(input);
+  const instanceId = Number(result[0].insertId);
+  const instance = await getVmById(instanceId);
+  if (!instance) throw new Error("Không thể tạo VM instance.");
+  return instance;
+}
+
+export async function appendVmLog(instanceId: number, message: string) {
+  const db = await getDb();
+  requireDatabase(db);
+  await db.insert(vmLogs).values({ instanceId, message });
+}
+
+export async function updateVmFromCallback(
+  instanceId: number,
+  values: { workflowRunId?: string; status?: "queued" | "running" | "failed" | "completed"; sshxUrl?: string | null }
+) {
+  const db = await getDb();
+  requireDatabase(db);
+  const updateSet: Record<string, unknown> = { updatedAt: new Date() };
+  if (values.workflowRunId) updateSet.workflowRunId = values.workflowRunId;
+  if (values.status) updateSet.status = values.status;
+  if (values.sshxUrl) updateSet.sshxUrl = values.sshxUrl;
+  await db.update(vmInstances).set(updateSet).where(eq(vmInstances.id, instanceId));
+}
+
+export async function markVmDispatchFailed(instanceId: number, message: string) {
+  await appendVmLog(instanceId, message);
+  await updateVmFromCallback(instanceId, { status: "failed" });
+}
+
+export async function getUserGithubSettings(userId: number) {
+  const db = await getDb();
+  requireDatabase(db);
+  const result = await db.select().from(userGithubSettings).where(eq(userGithubSettings.userId, userId)).limit(1);
+  return result[0];
+}
+
+export async function saveUserGithubSettings(
+  userId: number,
+  settings: Omit<UserGithubSettings, "id" | "userId" | "createdAt" | "updatedAt">
+) {
+  const db = await getDb();
+  requireDatabase(db);
+  await db.insert(userGithubSettings).values({ userId, ...settings }).onDuplicateKeyUpdate({
+    set: { ...settings, updatedAt: new Date() },
+  });
+  return getUserGithubSettings(userId);
+}

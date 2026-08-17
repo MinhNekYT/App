@@ -25,4 +25,40 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+export const vmStatusValues = ["queued", "running", "failed", "completed"] as const;
+
+export const vmInstances = mysqlTable("vmInstances", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  hostname: varchar("hostname", { length: 63 }).notNull(),
+  status: mysqlEnum("status", vmStatusValues).default("queued").notNull(),
+  githubOwner: varchar("githubOwner", { length: 100 }).notNull(),
+  githubRepo: varchar("githubRepo", { length: 100 }).notNull(),
+  workflowFile: varchar("workflowFile", { length: 255 }).notNull(),
+  workflowRunId: varchar("workflowRunId", { length: 64 }),
+  sshxUrl: text("sshxUrl"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const vmLogs = mysqlTable("vmLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  instanceId: int("instanceId").notNull().references(() => vmInstances.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const userGithubSettings = mysqlTable("userGithubSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  githubOwner: varchar("githubOwner", { length: 100 }).notNull(),
+  githubRepo: varchar("githubRepo", { length: 100 }).notNull(),
+  workflowFile: varchar("workflowFile", { length: 255 }).notNull().default("frierencloud-vm.yml"),
+  ref: varchar("ref", { length: 100 }).notNull().default("main"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type VmInstance = typeof vmInstances.$inferSelect;
+export type VmLog = typeof vmLogs.$inferSelect;
+export type UserGithubSettings = typeof userGithubSettings.$inferSelect;
