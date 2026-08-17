@@ -34,7 +34,8 @@ jobs:
       APP_VERSION: ${{ inputs.version }}
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EXPO_PUBLIC_GITHUB_REPOSITORY: ${{ secrets.EXPO_PUBLIC_GITHUB_REPOSITORY }}
-      EXPO_PUBLIC_BRIDGE_URL: ${{ secrets.EXPO_PUBLIC_BRIDGE_URL }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       # Optional: a user-created PAT may be stored as RELEASE_GITHUB_TOKEN.
       # If absent, the built-in github.token is used for the release.
       RELEASE_GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
@@ -80,7 +81,8 @@ jobs:
         run: |
           test -n "$EXPO_TOKEN" || (echo "Missing EXPO_TOKEN repository secret." && exit 1)
           test -n "$EXPO_PUBLIC_GITHUB_REPOSITORY" || (echo "Missing EXPO_PUBLIC_GITHUB_REPOSITORY repository secret." && exit 1)
-          test -n "$EXPO_PUBLIC_BRIDGE_URL" || (echo "Missing EXPO_PUBLIC_BRIDGE_URL repository secret." && exit 1)
+          test -n "$EXPO_PUBLIC_SUPABASE_URL" || (echo "Missing EXPO_PUBLIC_SUPABASE_URL repository secret." && exit 1)
+          test -n "$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY" || (echo "Missing EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY repository secret." && exit 1)
 
       - name: Link or initialize EAS project
         run: pnpm dlx eas-cli@latest init --force --non-interactive

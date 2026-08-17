@@ -34,7 +34,6 @@ yarn-error.*
 .env
 .env.*
 .env*.local
-api/logs/
 
 # typescript
 *.tsbuildinfo
@@ -52,8 +51,7 @@ app-example
 *.swo
 *~
 
-# Logs
-logs
+# Log files
 *.log
 
 # OS

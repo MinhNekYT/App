@@ -30,6 +30,38 @@ function statusFromGitHub(
   return "failed";
 }
 
+function delay(milliseconds: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function findLatestProvisionRun({
+  token,
+  repository,
+  requestedAt,
+}: {
+  token: string;
+  repository: string;
+  requestedAt: number;
+}) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (attempt > 0) await delay(1_000);
+    const response = await fetch(
+      `https://api.github.com/repos/${repository}/actions/workflows/provision-linux.yml/runs?event=workflow_dispatch&per_page=10`,
+      { headers: headers(token) },
+    );
+    if (!response.ok) continue;
+    const payload = (await response.json()) as {
+      workflow_runs?: Array<{ id: number; created_at?: string }>;
+    };
+    const run = payload.workflow_runs?.find((candidate) => {
+      const createdAt = candidate.created_at ? Date.parse(candidate.created_at) : 0;
+      return Number.isFinite(createdAt) && createdAt >= requestedAt - 10_000;
+    });
+    if (run) return run.id;
+  }
+  return undefined;
+}
+
 export async function dispatchProvision({
   token,
   repository,
@@ -47,6 +79,7 @@ export async function dispatchProvision({
   if (!isValidRepository(repository)) {
     throw new Error("Repository must use the owner/repository format.");
   }
+  const requestedAt = Date.now();
   const response = await fetch(
     `https://api.github.com/repos/${repository}/actions/workflows/provision-linux.yml/dispatches`,
     {
@@ -61,10 +94,7 @@ export async function dispatchProvision({
       `GitHub Actions could not start this session (${response.status}): ${detail || response.statusText}`,
     );
   }
-  const payload = (await response.json().catch(() => null)) as {
-    workflow_run_id?: number;
-  } | null;
-  return payload?.workflow_run_id;
+  return findLatestProvisionRun({ token, repository, requestedAt });
 }
 
 export async function getProvisionLog({

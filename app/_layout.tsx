@@ -100,7 +100,6 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="create" />
               <Stack.Screen name="logs/[id]" />
-              <Stack.Screen name="oauth/callback" />
             </Stack>
             <StatusBar style="light" />
           </FrierenCloudProvider>
