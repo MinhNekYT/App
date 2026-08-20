@@ -49,3 +49,10 @@
 - [x] Implemented and documented the transparent Antimining service, including signed heartbeat events and explicit `OnFailure=poweroff.target` behavior for abnormal watchdog termination.
 - [x] Verify the final FrierenCloud source commit on MinhNekYT/App and stop before live deployment, as requested.
 - [x] Verify that `docs/environment-template.md` contains every current runtime variable as a safe replacement for `.env.example`.
+- [x] Add admin-only `/logs channel:<channel>` and persist the selected Discord audit channel securely.
+- [x] Emit a structured audit entry for every bot command without logging GitHub tokens, webhook URLs, claim signatures, or other secrets.
+- [x] Add an Antimining port-block policy for the requested Stratum and TLS port lists, with explicit workflow logs.
+- [x] Add transparent watchdog checks for known mining process signatures, sustained CPU load, and supported temperature sensors.
+- [x] Add a staged violation response: evidence log, process termination, VPS shutdown, user ban, coin forfeiture, and retained audit trail.
+- [x] Add tests for audit-channel permissions/redaction and Antimining detection and containment policies.
+- [ ] Upload and verify the expanded audit and Antimining source in MinhNekYT/App.

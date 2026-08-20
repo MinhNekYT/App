@@ -3,8 +3,10 @@ import * as db from "./db";
 import { decryptGithubToken, encryptGithubToken } from "./githubToken";
 
 export const antiminingWebhookSettingKey = "antimining_discord_webhook";
-export function isValidAntiminingEvent(event: unknown, message: unknown): event is "installed" | "heartbeat" | "terminated" {
-  return ["installed", "heartbeat", "terminated"].includes(String(event)) && typeof message === "string" && message.length > 0 && message.length <= 1000;
+export const BLOCKED_MINING_PORTS = [2222, 3333, 4444, 5555, 7777, 8888, 13333, 14444] as const;
+export const MINING_PROCESS_SIGNATURES = ["xmrig", "cgminer", "bfgminer", "cpuminer", "minerd", "nbminer", "lolminer", "t-rex"] as const;
+export function isValidAntiminingEvent(event: unknown, message: unknown): event is "installed" | "heartbeat" | "terminated" | "alert" | "violation" {
+  return ["installed", "heartbeat", "terminated", "alert", "violation"].includes(String(event)) && typeof message === "string" && message.length > 0 && message.length <= 1000;
 }
 
 export function validateDiscordWebhookUrl(value: string) {

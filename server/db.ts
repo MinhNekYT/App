@@ -232,6 +232,21 @@ export async function addCoins(input: { userId: number; actorUserId: number | nu
   return getCoinBalance(input.userId);
 }
 
+export async function forfeitCoinsForViolation(input: { userId: number; instanceId?: number }) {
+  const db = await getDb();
+  requireDatabase(db);
+  await ensureCoinBalance(input.userId);
+  let forfeited = 0;
+  await db.transaction(async tx => {
+    const result = await tx.select().from(userCoinBalances).where(eq(userCoinBalances.userId, input.userId)).limit(1);
+    forfeited = result[0]?.balance ?? 0;
+    if (forfeited <= 0) return;
+    await tx.update(userCoinBalances).set({ balance: 0 }).where(eq(userCoinBalances.userId, input.userId));
+    await tx.insert(coinTransactions).values({ userId: input.userId, actorUserId: null, amount: -forfeited, reason: "antimining_forfeit", instanceId: input.instanceId });
+  });
+  return forfeited;
+}
+
 export async function reserveCoinsForVps(input: { userId: number; cost: number; instanceId?: number }) {
   if (!Number.isInteger(input.cost) || input.cost < 1) throw new Error("Coin cost must be a positive integer.");
   const db = await getDb();

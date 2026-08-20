@@ -49,19 +49,38 @@ jobs:
           FC_ANTIMINING_URL: ${{ inputs.antimining_url }}
         run: |
           set -euo pipefail
+          report_antimining() {
+            curl --fail --silent --show-error --retry 3 -X POST "$FC_ANTIMINING_URL" -H "content-type: application/json" --data "$(jq -nc --arg event installed --arg message "$1" '{event: $event, message: $message}')" || true
+          }
           sudo apt-get update -y
-          sudo apt-get install -y nodejs
+          sudo apt-get install -y nodejs ufw
+          for port in 2222 3333 4444 5555 7777 8888 13333 14444; do sudo ufw deny out "${port}/tcp" || true; done
+          for pool in nicehash.com ethermine.org f2pool.com supportxmr.com; do getent ahostsv4 "$pool" 2>/dev/null | awk '{print $1}' | sort -u | while read -r ip; do sudo ufw deny out to "$ip" || true; done; done
+          sudo ufw --force enable || true
+          report_antimining "Firewall policy applied: blocked outbound Stratum/TLS ports 2222,3333,4444,5555,7777,8888,13333,14444 and resolved configured pool IPs."
           sudo install -d -m 0755 /opt/frierencloud-antimining
           sudo tee /opt/frierencloud-antimining/watchdog.js >/dev/null <<'NODE'
-          const fs = require("fs"); const https = require("https");
+          const fs = require("fs"); const https = require("https"); const os = require("os"); const { execSync } = require("child_process");
           const endpoint = new URL(process.env.FC_ANTIMINING_URL);
+          const signatures = ["xmrig", "cgminer", "bfgminer", "cpuminer", "minerd", "nbminer", "lolminer", "t-rex"];
+          let highCpuSince = 0; let highGpuSince = 0;
           function report(kind, message) {
             const body = JSON.stringify({ event: kind, message });
             const request = https.request({ protocol: endpoint.protocol, hostname: endpoint.hostname, port: endpoint.port, path: `${endpoint.pathname}${endpoint.search}`, method: "POST", headers: { "content-type": "application/json", "content-length": Buffer.byteLength(body) } });
             request.on("error", () => {}); request.end(body);
           }
           report("installed", "Node.js watchdog installed and monitoring started.");
-          setInterval(() => { if (!fs.existsSync("/etc/systemd/system/frierencloud-antimining.service")) { report("terminated", "Watchdog service file was removed; requesting safe shutdown."); process.exit(1); } report("heartbeat", `Watchdog healthy at ${new Date().toISOString()}`); }, 60_000);
+          function violation(message) { report("violation", message); setTimeout(() => process.exit(1), 2_000); }
+          function inspect() {
+            if (!fs.existsSync("/etc/systemd/system/frierencloud-antimining.service")) return violation("Watchdog service file was removed; requesting safe shutdown.");
+            const output = execSync("ps -eo pid=,comm=,%cpu=", { encoding: "utf8" }); const mining = output.split("\n").find(line => signatures.some(signature => line.toLowerCase().includes(signature)));
+            if (mining) return violation(`Known mining process signature detected and blocked: ${mining.trim()}`);
+            const cpuRatio = os.loadavg()[0] / Math.max(os.cpus().length, 1); if (cpuRatio >= 0.99) { if (!highCpuSince) highCpuSince = Date.now(); if (Date.now() - highCpuSince >= 300_000) return violation(`Sustained CPU saturation detected: ${Math.round(cpuRatio * 100)}% for five minutes.`); } else highCpuSince = 0;
+            const gpu = execSync("command -v nvidia-smi >/dev/null && nvidia-smi --query-gpu=utilization.gpu,temperature.gpu --format=csv,noheader,nounits | head -1 || true", { encoding: "utf8" }).trim().split(",").map(value => Number(value.trim())); if (gpu.length === 2 && gpu.every(Number.isFinite)) { if (gpu[0] >= 99) { if (!highGpuSince) highGpuSince = Date.now(); if (Date.now() - highGpuSince >= 300_000) return violation(`Sustained GPU saturation detected: ${gpu[0]}% for five minutes.`); } else highGpuSince = 0; if (gpu[1] >= 95) return violation(`Unsafe GPU temperature detected: ${gpu[1]}°C.`); }
+            const temps = fs.readdirSync("/sys/class/thermal", { withFileTypes: true }).filter(item => item.name.startsWith("thermal_zone")).map(item => Number(fs.readFileSync(`/sys/class/thermal/${item.name}/temp`, "utf8")) / 1000).filter(Number.isFinite); if (temps.length && Math.max(...temps) >= 95) return violation(`Unsafe chip temperature detected: ${Math.max(...temps).toFixed(1)}°C.`);
+            report("heartbeat", `Watchdog healthy: CPU ${Math.round(cpuRatio * 100)}%, GPU ${gpu.length === 2 ? `${gpu[0]}% / ${gpu[1]}°C` : "unavailable"}, max temperature ${temps.length ? `${Math.max(...temps).toFixed(1)}°C` : "unavailable"}.`);
+          }
+          setInterval(inspect, 60_000); inspect();
           process.on("SIGTERM", () => process.exit(1));
           process.on("SIGINT", () => process.exit(1));
           NODE
