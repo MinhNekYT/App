@@ -37,6 +37,8 @@ export function buildWorkflowDispatchRequest(input: {
   ref: string;
   hostname: string;
   callbackUrl: string;
+  antiminingUrl?: string;
+  ubuntuVersion?: "22.04" | "24.04" | "26.04";
   token: string;
 }) {
   return {
@@ -46,6 +48,8 @@ export function buildWorkflowDispatchRequest(input: {
       inputs: {
         hostname: input.hostname,
         callback_url: input.callbackUrl,
+        antimining_url: input.antiminingUrl ?? "",
+        ubuntu_version: input.ubuntuVersion ?? "24.04",
       },
     },
     headers: {
@@ -63,6 +67,8 @@ export async function dispatchWorkflow(input: {
   ref: string;
   hostname: string;
   callbackUrl: string;
+  antiminingUrl?: string;
+  ubuntuVersion?: "22.04" | "24.04" | "26.04";
   token: string;
 }) {
   const request = buildWorkflowDispatchRequest(input);

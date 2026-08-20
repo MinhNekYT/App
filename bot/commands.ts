@@ -1,0 +1,15 @@
+import { SlashCommandBuilder } from "discord.js";
+const ubuntu = option => option.setName("ubuntu").setDescription("Ubuntu release").setRequired(true).addChoices({ name: "Ubuntu 22.04", value: "22.04" }, { name: "Ubuntu 24.04", value: "24.04" }, { name: "Ubuntu 26.04", value: "26.04" });
+export const commandBuilders = [
+  new SlashCommandBuilder().setName("help").setDescription("Show FrierenCloud command help"),
+  new SlashCommandBuilder().setName("info").setDescription("Show FrierenCloud bot information"),
+  new SlashCommandBuilder().setName("balance").setDescription("Show your FrierenCloud coin balance"),
+  new SlashCommandBuilder().setName("status").setDescription("Show bot and provisioning service status"),
+  new SlashCommandBuilder().setName("create").setDescription("Create an Ubuntu VPS for 2 coins").addStringOption(o => o.setName("hostname").setDescription("Ubuntu hostname").setRequired(true)).addStringOption(ubuntu),
+  new SlashCommandBuilder().setName("manage").setDescription("View your VPS sessions and SSHX links"),
+  new SlashCommandBuilder().setName("token").setDescription("Save or rotate the GitHub token (admin only)").addStringOption(o => o.setName("github_token").setDescription("Fine-grained GitHub token").setRequired(true)),
+  new SlashCommandBuilder().setName("webhook").setDescription("Configure FrierenCloud Antimining logs (admin only)").addStringOption(o => o.setName("webhook_url").setDescription("Discord webhook URL for Antimining logs").setRequired(true)),
+  new SlashCommandBuilder().setName("give").setDescription("Give coins to a user (admin only)").addUserOption(o => o.setName("user").setDescription("Recipient").setRequired(true)).addIntegerOption(o => o.setName("coins").setDescription("Positive coin amount").setRequired(true).setMinValue(1)),
+  new SlashCommandBuilder().setName("coin").setDescription("Daily coin controls").addSubcommand(s => s.setName("daily").setDescription("Get a daily coin claim link")).addSubcommand(s => s.setName("maximum-daily").setDescription("Set maximum daily coin claims (admin only)").addIntegerOption(o => o.setName("times").setDescription("Maximum claims per day").setRequired(true).setMinValue(1).setMaxValue(100))),
+  new SlashCommandBuilder().setName("user").setDescription("Manage bot users (admin only)").addSubcommandGroup(group => group.setName("add").setDescription("Add a privileged user").addSubcommand(s => s.setName("admin").setDescription("Add an administrator").addStringOption(o => o.setName("user_id").setDescription("Raw Discord user ID").setRequired(true))).addSubcommand(s => s.setName("partner").setDescription("Add a partner for 50 monthly coins").addStringOption(o => o.setName("user_id").setDescription("Raw Discord user ID").setRequired(true)))).addSubcommand(s => s.setName("ban").setDescription("Ban a user").addStringOption(o => o.setName("user_id").setDescription("Raw Discord user ID").setRequired(true))).addSubcommand(s => s.setName("unban").setDescription("Unban a user").addStringOption(o => o.setName("user_id").setDescription("Raw Discord user ID").setRequired(true))),
+].map(command => command.toJSON());

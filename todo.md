@@ -17,7 +17,33 @@
 - [x] Hoàn tất cấu hình Discord OAuth2 bằng Client ID, Client Secret và callback URL do người dùng cung cấp.
 - [ ] Sao chép workflow SSHX vào repository runner và kiểm tra lần chạy GitHub Actions đầu tiên với token có quyền phù hợp.
 - [ ] Khai báo trực tiếp biến Discord OAuth2 trong tệp `.env` bảo mật của project theo giá trị người dùng cung cấp.
-- [ ] Tạo tệp `.env` trống không chứa bí mật để đưa vào repository MinhNek/App theo yêu cầu.
-- [ ] Đồng bộ toàn bộ mã nguồn FrierenCloud đã kiểm thử lên repository MinhNek/App và xác minh commit đích.
-- [ ] Đồng bộ toàn bộ mã nguồn FrierenCloud đã kiểm thử lên repository riêng tư MinhNekYT/App và xác minh commit đích.
+- [ ] Tạo tệp `.env` trống không chứa bí mật để đưa vào repository MinhNek/App theo yêu cầu. Blocked: the repository is not writable and project secret policy prohibits committing `.env` files.
+- [ ] Đồng bộ toàn bộ mã nguồn FrierenCloud đã kiểm thử lên repository MinhNek/App và xác minh commit đích. Blocked: the configured GitHub connection needs authorization for the MinhNek account/repository.
+- [x] Đồng bộ toàn bộ mã nguồn FrierenCloud đã kiểm thử lên repository riêng tư MinhNekYT/App và xác minh commit đích.
 - [x] Kiểm tra build production và cấu trúc API/static assets để bảo đảm có thể triển khai trên Vercel.
+- [x] Recover the English Node.js FrierenCloud Discord bot source after the workspace restoration.
+- [x] Implement `/create` to atomically charge 2 coins and provision an Ubuntu VPS through GitHub Actions.
+- [x] Implement `/manage` to show a user only their existing VPS sessions, real status, and SSHX URLs.
+- [x] Implement multi-admin `ADMIN_IDS`, secure `/token`, and admin-only `/give @user coins`.
+- [x] Change the Ubuntu workflow to run exactly `curl -sSf https://sshx.io/get | sh -s run` and DM real SSHX completion links.
+- [x] Add migrations and tests for coin balances, encrypted token storage, admin access, and completion DMs.
+- [x] Deliver persistent Node.js bot hosting instructions and request runtime credentials for a live Discord smoke test.
+- [x] Add database-managed administrator, ban, partner, claim, and claim-limit records without relying on ADMIN_IDS edits.
+- [x] Implement `/coin daily` with a signed BASE_URL claim link and `/coin maximum-daily` for administrators.
+- [x] Build a claim web page that shows the Discord user avatar and display name with a “Get coins here” button.
+- [x] Implement `/user add admin`, `/user add partner`, `/user ban`, and `/user unban` with the required English permission and ban messages.
+- [x] Grant partners 50 coins monthly with durable eligibility tracking and a safe scheduled award process.
+- [x] Add `/info` with owner mention, version 1.0, and bot ping, plus Ubuntu 22.04, 24.04, and 26.04 selection in `/create`.
+- [x] Switch package scripts, installation guidance, and runtime instructions from pnpm to npm; provide an `.env` template for all secrets and BASE_URL.
+- [x] Add the supplied FrierenCloud artwork as a separate bot avatar file in the source package.
+- [x] Add safe environment template documentation with variable names and placeholders only; project secret policy prevents committing an `.env` or `.env.example` file.
+- [x] Add HMAC protection to `/coin daily` links and validate the signature before rendering or redeeming the claim page.
+- [x] Add a cron-authenticated, idempotent monthly partner reward endpoint and npm hosting instructions for scheduling it outside the bot process.
+- [x] Staged the supplied avatar separately at `/home/ubuntu/webdev-static-assets/frierencloud-bot-avatar.png` and exposed it as `/manus-storage/frierencloud-bot-avatar_d0bb8fd1.png`.
+- [ ] Add an admin-only `/webhook` command that securely stores a log webhook URL without requiring `.env` changes.
+- [ ] Add authenticated Antimining webhook endpoints that emit only structured status, heartbeat, and termination events.
+- [ ] Add a transparent Node.js Ubuntu watchdog installed by the VPS workflow, with documented opt-in shutdown behavior if the watchdog service is deliberately removed.
+- [ ] Connect the watchdog to the configured Antimining endpoint and log its health to both the bot host and the selected Discord webhook.
+- [ ] Add tests for webhook permissions, event signing, and safe watchdog configuration.
+- [ ] Upload the completed Antimining bot source to MinhNekYT/App and verify the target commit.
+- [x] Implemented and documented the transparent Antimining service, including signed heartbeat events and explicit `OnFailure=poweroff.target` behavior for abnormal watchdog termination.

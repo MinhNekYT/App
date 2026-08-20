@@ -4,7 +4,9 @@ import { findSshxUrl, isValidVmLogSignature } from "./github";
 
 const VALID_STATUSES = new Set(["queued", "running", "failed", "completed"]);
 
-export function registerVmCallbackRoute(app: Express) {
+type CallbackNotification = (instance: Awaited<ReturnType<typeof db.getVmById>>) => Promise<void> | void;
+
+export function registerVmCallbackRoute(app: Express, onSshxReady?: CallbackNotification) {
   app.post("/api/vm-logs/:instanceId", async (req: Request, res: Response) => {
     const instanceId = Number(req.params.instanceId);
     const signature = typeof req.query.sig === "string" ? req.query.sig : "";
@@ -35,6 +37,8 @@ export function registerVmCallbackRoute(app: Express) {
       status: VALID_STATUSES.has(status ?? "") ? (status as "queued" | "running" | "failed" | "completed") : "running",
       sshxUrl,
     });
+
+    if (sshxUrl && onSshxReady) await onSshxReady(await db.getVmById(instanceId));
 
     res.status(204).end();
   });

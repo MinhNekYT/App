@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, int, mysqlEnum, mysqlTable, primaryKey, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -36,6 +36,7 @@ export const vmInstances = mysqlTable("vmInstances", {
   githubRepo: varchar("githubRepo", { length: 100 }).notNull(),
   workflowFile: varchar("workflowFile", { length: 255 }).notNull(),
   workflowRunId: varchar("workflowRunId", { length: 64 }),
+  ubuntuVersion: varchar("ubuntuVersion", { length: 8 }).notNull().default("24.04"),
   sshxUrl: text("sshxUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -59,6 +60,55 @@ export const userGithubSettings = mysqlTable("userGithubSettings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const userCoinBalances = mysqlTable("userCoinBalances", {
+  userId: int("userId").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  balance: int("balance").notNull().default(0),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const coinTransactions = mysqlTable("coinTransactions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  actorUserId: int("actorUserId").references(() => users.id, { onDelete: "set null" }),
+  amount: int("amount").notNull(),
+  reason: varchar("reason", { length: 128 }).notNull(),
+  instanceId: int("instanceId").references(() => vmInstances.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const botSettings = mysqlTable("botSettings", {
+  settingKey: varchar("settingKey", { length: 80 }).primaryKey(),
+  settingValue: text("settingValue").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const botUserAccess = mysqlTable("botUserAccess", {
+  userId: int("userId").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  isAdmin: boolean("isAdmin").notNull().default(false),
+  isBanned: boolean("isBanned").notNull().default(false),
+  isPartner: boolean("isPartner").notNull().default(false),
+  lastPartnerRewardMonth: varchar("lastPartnerRewardMonth", { length: 7 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const coinClaimLinks = mysqlTable("coinClaimLinks", {
+  id: varchar("id", { length: 48 }).primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  discordName: varchar("discordName", { length: 100 }).notNull(),
+  avatarUrl: text("avatarUrl"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const dailyClaimUsage = mysqlTable("dailyClaimUsage", {
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  claimDate: varchar("claimDate", { length: 10 }).notNull(),
+  count: int("count").notNull().default(0),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ pk: primaryKey({ columns: [table.userId, table.claimDate] }) }));
+
 export type VmInstance = typeof vmInstances.$inferSelect;
 export type VmLog = typeof vmLogs.$inferSelect;
 export type UserGithubSettings = typeof userGithubSettings.$inferSelect;
+export type UserCoinBalance = typeof userCoinBalances.$inferSelect;
