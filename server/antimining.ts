@@ -3,6 +3,9 @@ import * as db from "./db";
 import { decryptGithubToken, encryptGithubToken } from "./githubToken";
 
 export const antiminingWebhookSettingKey = "antimining_discord_webhook";
+export function isValidAntiminingEvent(event: unknown, message: unknown): event is "installed" | "heartbeat" | "terminated" {
+  return ["installed", "heartbeat", "terminated"].includes(String(event)) && typeof message === "string" && message.length > 0 && message.length <= 1000;
+}
 
 export function validateDiscordWebhookUrl(value: string) {
   const url = new URL(value.trim());

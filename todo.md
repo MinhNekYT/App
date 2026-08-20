@@ -40,10 +40,10 @@
 - [x] Add HMAC protection to `/coin daily` links and validate the signature before rendering or redeeming the claim page.
 - [x] Add a cron-authenticated, idempotent monthly partner reward endpoint and npm hosting instructions for scheduling it outside the bot process.
 - [x] Staged the supplied avatar separately at `/home/ubuntu/webdev-static-assets/frierencloud-bot-avatar.png` and exposed it as `/manus-storage/frierencloud-bot-avatar_d0bb8fd1.png`.
-- [ ] Add an admin-only `/webhook` command that securely stores a log webhook URL without requiring `.env` changes.
-- [ ] Add authenticated Antimining webhook endpoints that emit only structured status, heartbeat, and termination events.
-- [ ] Add a transparent Node.js Ubuntu watchdog installed by the VPS workflow, with documented opt-in shutdown behavior if the watchdog service is deliberately removed.
-- [ ] Connect the watchdog to the configured Antimining endpoint and log its health to both the bot host and the selected Discord webhook.
-- [ ] Add tests for webhook permissions, event signing, and safe watchdog configuration.
-- [ ] Upload the completed Antimining bot source to MinhNekYT/App and verify the target commit.
+- [x] Add an admin-only `/webhook` command that securely stores a log webhook URL without requiring `.env` changes.
+- [x] Add authenticated Antimining webhook endpoints that emit only structured status, heartbeat, and termination events.
+- [x] Add a transparent Node.js Ubuntu watchdog installed by the VPS workflow, with documented opt-in shutdown behavior if the watchdog service is deliberately removed.
+- [x] Connect the watchdog to the configured Antimining endpoint and log its health to both the bot host and the selected Discord webhook.
+- [x] Add tests for webhook permissions, event signing, and safe watchdog configuration.
+- [x] Upload the completed Antimining bot source to MinhNekYT/App and verify the target commit `1495eb3`.
 - [x] Implemented and documented the transparent Antimining service, including signed heartbeat events and explicit `OnFailure=poweroff.target` behavior for abnormal watchdog termination.

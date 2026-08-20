@@ -17,6 +17,7 @@ vi.mock("../server/db", () => ({
 }));
 vi.mock("../server/github", () => ({ createVmLogSignature: vi.fn(() => "signed"), dispatchWorkflow: vi.fn(), validateLinuxHostname: vi.fn(value => value) }));
 vi.mock("../server/githubToken", () => ({ decryptGithubToken: vi.fn(() => "github-token"), encryptGithubToken: vi.fn(), githubTokenSettingKey: "github_dispatch_token_v1" }));
+vi.mock("../server/antimining", () => ({ setAntiminingWebhook: vi.fn() }));
 
 import * as db from "../server/db";
 import { dispatchWorkflow } from "../server/github";
@@ -26,7 +27,7 @@ function createInteraction(hostname = "frieren-01") {
   return { commandName: "create", user: { id: "guest-discord-id", username: "guest", globalName: "Guest" }, options: { getString: () => hostname }, reply: vi.fn(), deferReply: vi.fn().mockResolvedValue(undefined), editReply: vi.fn().mockResolvedValue(undefined) } as any;
 }
 
-function nonAdminInteraction(commandName: "token" | "give") {
+function nonAdminInteraction(commandName: "token" | "give" | "webhook") {
   return { commandName, user: { id: "guest-discord-id" }, options: { getString: () => "token", getUser: () => null, getInteger: () => 1 }, reply: vi.fn().mockResolvedValue(undefined) } as any;
 }
 
@@ -40,7 +41,7 @@ describe("command and coin behavior", () => {
     vi.mocked(db.getVmForUser).mockResolvedValue({ id: 8, hostname: "frieren-01", status: "running", githubOwner: "owner", githubRepo: "repo", workflowRunId: "42", sshxUrl: null } as any);
   });
 
-  it.each(["token", "give"] as const)("rejects non-admin /%s access", async commandName => {
+  it.each(["token", "give", "webhook"] as const)("rejects non-admin /%s access", async commandName => {
     const interaction = nonAdminInteraction(commandName);
     await handleCommand(interaction);
     expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({ content: "ERROR: You cannot use this command because you are not an administrator.", ephemeral: true }));
