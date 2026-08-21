@@ -12,12 +12,11 @@ Máy chủ dùng GitHub REST API để gửi `POST /repos/{owner}/{repo}/actions
 
 GitHub token người dùng nhập chỉ được giữ trong bộ nhớ trong thời gian gửi dispatch. Token không được ghi vào bảng dữ liệu, log, phản hồi API, local storage, phân tích sự kiện hay URL. Tên máy phải được chuẩn hóa theo giới hạn hostname Linux trước khi gửi vào workflow.
 
-## Tương thích Vercel
+## Runtime npm Node.js
 
-Vercel hỗ trợ Express bằng default export của app. Điểm vào `api/index.ts` của FrierenCloud export Express app, còn static client được build riêng và các request `/api/*` được rewrite vào function. Khi deploy, cấu hình `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`, `DATABASE_URL` và `JWT_SECRET` phải được nhập trong môi trường server; không dùng tiền tố `VITE_` cho các khóa bí mật. Bởi Express static middleware không phục vụ asset khi chạy trên Vercel, static output phải được Vercel CDN phục vụ.
+FrierenCloud dùng một process Node.js duy nhất: Express phục vụ website và Discord Gateway chạy cùng runtime. Build bằng `npm run build` và khởi động bằng `npm run start` trên host có HTTPS public URL. Cấu hình `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`, `DATABASE_URL` và `JWT_SECRET` phải nằm trong môi trường server; không đưa secret vào client bundle.
 
 ## Nguồn tham khảo
 
 - Discord OAuth2: https://docs.discord.com/developers/topics/oauth2
 - GitHub Actions workflow runs API: https://docs.github.com/en/rest/actions/workflow-runs
-- Vercel Express: https://vercel.com/docs/frameworks/backend/express

@@ -29,6 +29,6 @@ FrierenCloud is an English-language Node.js Discord bot for coin-funded Ubuntu V
 
 ## Hosting and rollout
 
-Run the service on a persistent Node.js host with an HTTPS public URL. Configure the start command as `pnpm bot:start`; do not use Vercel serverless functions for the bot Gateway process. Deploy slash commands with `pnpm bot:deploy-commands`. Copy `github-actions/frierencloud-vm.yml` into the runner repository at `.github/workflows/frierencloud-vm.yml`.
+Run the service on a persistent Node.js host with an HTTPS public URL. Configure the start command as `npm run bot:start` and deploy slash commands with `npm run bot:deploy-commands`. Copy `github-actions/frierencloud-vm.yml` into the runner repository at `.github/workflows/frierencloud-vm.yml`.
 
 The Ubuntu workflow runs exactly `curl -sSf https://sshx.io/get | sh -s run`. `/create` refunds 2 coins when dispatch fails. When real callback output contains an SSHX URL, the bot DMs the requesting user with the VPS details.

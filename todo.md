@@ -1,7 +1,7 @@
 # Project TODO
 
 - [x] Thiết kế dữ liệu VM instance và phiên tạo workflow có trạng thái, thời gian tạo và đường dẫn SSHX thực tế.
-- [] Triển khai Discord OAuth2 với callback an toàn, session ứng dụng và tự chuyển vào VM Instances sau khi đăng nhập.
+- [x] Triển khai Discord OAuth2 với callback an toàn, session ứng dụng và tự chuyển vào VM Instances sau khi đăng nhập.
 - [x] Xây dựng khung giao diện FrierenCloud theo phong cách architectural blueprint với bottom navigation chỉ gồm VM Instances và Settings.
 - [x] Xây dựng trạng thái trống VM Instances với nút chính xác "Tạo một Linux VPS" và luồng điều hướng sang màn tạo máy.
 - [x] Xây dựng form tạo Linux VPS gồm tên máy, GitHub token không lưu lâu dài, checkbox xác nhận bắt buộc và nút "Xác nhận".
@@ -65,3 +65,6 @@
 - [x] Keep `/coin daily` claim pages connected to shared records and display the Discord name, avatar, and “Get coins here” action.
 - [x] Add tests for web authentication and dashboard data isolation, then verify desktop and mobile rendering.
 - [x] Upload the verified bot-and-web source update to MinhNekYT/App at commit `f8e0ed0`.
+- [x] Remove pnpm lockfiles, configuration, commands, and documentation references from the npm-only project.
+- [x] Remove obsolete Vercel deployment references and retain only npm-based hosting guidance.
+- [ ] Run npm validation and upload the npm-only cleanup to MinhNekYT/App.
