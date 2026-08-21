@@ -1,50 +1,34 @@
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Route, Switch, Redirect } from "wouter";
-import type { ComponentType } from "react";
-import ErrorBoundary from "./components/ErrorBoundary";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import { useAuth } from "./_core/hooks/useAuth";
-import { PageLoader } from "./components/PageLoader";
-import CreateVm from "./pages/CreateVm";
-import Login from "./pages/Login";
-import NotFound from "./pages/NotFound";
-import Settings from "./pages/Settings";
-import VmInstances from "./pages/VmInstances";
-import VmLogs from "./pages/VmLogs";
+import { useEffect, useState } from "react";
 
-function Protected({ component: Component }: { component: ComponentType }) {
-  const { loading, isAuthenticated } = useAuth();
-  if (loading) return <PageLoader />;
-  if (!isAuthenticated) return <Redirect to="/" />;
-  return <Component />;
+const ARTWORK = "/manus-storage/frierencloud-dashboard-artwork_dd2655b4.png";
+type Instance = { id: number; hostname: string; ubuntuVersion: string; status: string; sshxUrl: string | null; createdAt: string };
+type Dashboard = { user: { name: string; avatarUrl: string }; coins: number; instances: Instance[] };
+type LogEntry = { id: number; message: string; createdAt: string };
+
+function CoinMark() { return <span className="coin-mark">◈</span>; }
+function statusClass(status: string) { return `status status-${status}`; }
+
+function Landing() {
+  return <main className="landing"><nav className="landing-nav"><div className="brand"><span className="brand-star">✦</span> FrierenCloud</div><a className="nav-login" href="/auth/discord">Đăng nhập Discord</a></nav><section className="hero"><div className="hero-copy"><p className="eyebrow">DISCORD-POWERED VPS CONTROL</p><h1>Không gian VPS của bạn, <em>rõ ràng hơn.</em></h1><p className="hero-lead">Quản lý máy Ubuntu, theo dõi SSHX và nhận coins mỗi ngày trong một dashboard kết nối trực tiếp với Discord.</p><div className="hero-actions"><a className="primary-button" href="/auth/discord">Đăng nhập bằng Discord <span>→</span></a><a className="secondary-button" href="#features">Xem cách hoạt động</a></div><div className="hero-notes"><span>◉ Bot commands</span><span>◉ Shared coin balance</span><span>◉ Ubuntu VPS</span></div></div><div className="hero-art"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="art-card"><img src={ARTWORK} alt="FrierenCloud mascot"/><div className="art-caption"><span>FrierenCloud</span><small>Discord → VPS → SSHX</small></div></div></div></section><section id="features" className="feature-row"><article><span>01</span><h2>Discord một lần</h2><p>Đăng nhập an toàn bằng Discord OAuth2. Profile website và bot nhận diện cùng một tài khoản.</p></article><article><span>02</span><h2>Coins đồng bộ</h2><p>Dùng <code>/coin daily</code> để nhận link; số dư hiển thị tức thì trên dashboard.</p></article><article><span>03</span><h2>VPS rõ trạng thái</h2><p>Dùng <code>/create</code> trên bot để tạo VPS, sau đó xem trạng thái và liên kết SSHX tại đây.</p></article></section></main>;
 }
 
-function Router() {
-  return (
-    <Switch>
-      <Route path="/" component={Login} />
-      <Route path="/vm-instances"><Protected component={VmInstances} /></Route>
-      <Route path="/vm-instances/new"><Protected component={CreateVm} /></Route>
-      <Route path="/vm-instances/:id/logs"><Protected component={VmLogs} /></Route>
-      <Route path="/settings"><Protected component={Settings} /></Route>
-      <Route path="/404" component={NotFound} />
-      <Route component={NotFound} />
-    </Switch>
-  );
+function DashboardPage({ data, refresh }: { data: Dashboard; refresh: () => Promise<void> }) {
+  const [section, setSection] = useState("Tổng quan");
+  const [logs, setLogs] = useState<LogEntry[] | null>(null);
+  const [selectedVm, setSelectedVm] = useState<number | null>(null);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const openLogs = async (id: number) => { setSelectedVm(id); setLoadingLogs(true); const result = await fetch(`/api/web/vms/${id}`, { credentials: "include" }); const body = await result.json(); setLogs(body.logs ?? []); setLoadingLogs(false); };
+  const logout = async () => { await fetch("/auth/logout", { method: "POST", credentials: "include" }); window.location.assign("/"); };
+  const nav = ["Tổng quan", "Máy chủ", "Coins", "Cài đặt"];
+  return <div className="dashboard-shell"><aside className="sidebar"><div className="brand"><span className="brand-star">✦</span> FrierenCloud</div><p className="sidebar-label">KHÔNG GIAN CỦA BẠN</p><div className="side-nav">{nav.map(item => <button key={item} className={section === item ? "active" : ""} onClick={() => setSection(item)}><span>{item === "Tổng quan" ? "◫" : item === "Máy chủ" ? "⌘" : item === "Coins" ? "◈" : "⚙"}</span>{item}</button>)}</div><div className="sidebar-help"><strong>Cần tạo VPS?</strong><p>Mở Discord và chạy <code>/create</code>.</p><a href="https://discord.com/app" target="_blank">Mở Discord →</a></div></aside><section className="dashboard-main"><header className="dashboard-header"><div><p className="eyebrow">{section.toUpperCase()}</p><h1>Chào, {data.user.name.split(" ")[0]}.</h1></div><div className="profile-area"><button className="balance-chip" onClick={() => setSection("Coins")}><CoinMark/><b>{data.coins}</b><span>coins</span></button><button className="profile-button" onClick={logout} title="Đăng xuất"><img src={data.user.avatarUrl} alt="Discord avatar"/><span>{data.user.name}</span></button></div></header>{section === "Coins" ? <section className="coin-page"><CoinMark/><p className="eyebrow">SỐ DƯ ĐỒNG BỘ</p><h2>{data.coins} coins</h2><p>Để nhận coins hằng ngày, mở bot Discord và dùng <code>/coin daily</code>. Link nhận coin sẽ hiển thị avatar, tên Discord và nút <strong>Get coins here</strong>.</p><a href="https://discord.com/app" target="_blank" className="primary-button">Mở bot Discord <span>→</span></a></section> : section === "Cài đặt" ? <section className="settings-page"><p className="eyebrow">TÀI KHOẢN</p><h2>Đăng nhập bằng Discord</h2><p>Thông tin avatar, tên hiển thị, coins và VPS của dashboard luôn dùng chung hồ sơ Discord với bot.</p><button className="secondary-button" onClick={logout}>Đăng xuất</button></section> : <><section className="overview-grid"><article className="overview-card emphasis"><p>SỐ DƯ HIỆN TẠI</p><div><CoinMark/><strong>{data.coins}</strong><span>coins</span></div><button onClick={() => setSection("Coins")}>Nhận coins mỗi ngày →</button></article><article className="overview-card"><p>VPS ĐANG THEO DÕI</p><strong>{data.instances.length}</strong><span>{data.instances.filter(vm => vm.status === "running").length} instance đang chạy</span></article><article className="overview-card guide"><p>THAO TÁC NHANH</p><strong>Tạo máy Ubuntu</strong><span>Dùng slash command <code>/create</code> trong Discord.</span></article></section><section className="instances-section"><div className="section-heading"><div><p className="eyebrow">DANH SÁCH MÁY CHỦ</p><h2>VM Instances</h2></div><button className="refresh" onClick={refresh}>Làm mới</button></div>{data.instances.length === 0 ? <div className="empty-state"><span>⌘</span><h3>Chưa có VPS nào</h3><p>Mở Discord, dùng <code>/create</code> và chọn Ubuntu 22.04 hoặc 24.04 để bắt đầu.</p></div> : <div className="vm-table">{data.instances.map(vm => <button className="vm-row" key={vm.id} onClick={() => openLogs(vm.id)}><span className="vm-icon">⌘</span><span className="vm-name"><b>{vm.hostname}</b><small>Ubuntu {vm.ubuntuVersion} · #{vm.id}</small></span><span className={statusClass(vm.status)}>{vm.status}</span><span className="vm-sshx">{vm.sshxUrl ? "SSHX available ↗" : "Xem logs →"}</span></button>)}</div>}{selectedVm ? <section className="log-panel"><div><p className="eyebrow">LIVE SETUP LOGS · VPS #{selectedVm}</p><h3>Nhật ký provisioning</h3></div>{loadingLogs ? <p>Đang tải logs…</p> : <pre>{logs?.length ? logs.map(log => `[${new Date(log.createdAt).toLocaleString("vi-VN")}] ${log.message}`).join("\n") : "Chưa có log nào."}</pre>}</section> : null}</section></>}</section></div>;
 }
 
-function App() {
-  return (
-    <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
-  );
+export default function App() {
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const refresh = async () => { try { const response = await fetch("/api/web/dashboard", { credentials: "include" }); setDashboard(response.ok ? await response.json() : null); } catch { setDashboard(null); } finally { setLoading(false); } };
+  useEffect(() => { void refresh(); }, []);
+  if (loading) return <div className="app-loader"><span className="brand-star">✦</span> Đang kết nối FrierenCloud…</div>;
+  if (!dashboard) return <Landing />;
+  return <DashboardPage data={dashboard} refresh={refresh} />;
 }
-
-export default App;

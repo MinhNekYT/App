@@ -58,3 +58,10 @@
 - [x] Upload and verify the expanded audit and Antimining source in MinhNekYT/App at commit `d9f1fde`.
 - [x] Map GitHub PAT, repository-access, and workflow-dispatch failures in `/create` to `ERROR: Unable to create VPS because account access is unavailable.` without leaking details.
 - [x] Add tests for the required GitHub access error and upload the verified source update to MinhNekYT/App at commit `09cefcf`.
+- [x] Define the shared Discord web-session model so website and bot resolve the same FrierenCloud user, coins, and VPS records.
+- [x] Implement Discord OAuth2 login, logout, protected dashboard APIs, and a configurable web port through the host `.env`.
+- [x] Build the Vietnamese FrierenCloud landing page using the supplied artwork, with a Discord login entry point.
+- [x] Build the responsive authenticated dashboard with sidebar navigation, user profile, avatar, synchronized coin balance, and VPS information.
+- [x] Keep `/coin daily` claim pages connected to shared records and display the Discord name, avatar, and “Get coins here” action.
+- [x] Add tests for web authentication and dashboard data isolation, then verify desktop and mobile rendering.
+- [ ] Upload the verified bot-and-web source update to MinhNekYT/App.

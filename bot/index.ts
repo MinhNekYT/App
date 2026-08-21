@@ -1,4 +1,5 @@
 import express from "express";
+import path from "node:path";
 import { createDiscordBot, notifyAntiminingViolation, notifyVpsCompletion } from "./service";
 import { botConfig, requireBotRuntimeConfig } from "./config";
 import { registerVmCallbackRoute } from "../server/vmCallback";
@@ -6,6 +7,7 @@ import * as db from "../server/db";
 import { isValidClaimSignature } from "../server/claimSignature";
 import { isValidVmLogSignature } from "../server/github";
 import { isValidAntiminingEvent, sendAntiminingWebhook } from "../server/antimining";
+import { registerWebAuthRoutes } from "../server/webAuth";
 
 function escapeHtml(value: string) { return value.replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]!); }
 function claimPage(link: { id: string; discordName: string; avatarUrl: string | null }, notice?: string) {
@@ -24,6 +26,13 @@ async function main() {
   app.post("/api/scheduled/partner-rewards", async (req, res) => { if (!process.env.PARTNER_REWARD_CRON_SECRET || req.header("x-cron-secret") !== process.env.PARTNER_REWARD_CRON_SECRET) return res.status(403).json({ error: "cron-only" }); try { res.json({ ok: true, rewarded: await db.awardDuePartnerRewards() }); } catch (error) { res.status(500).json({ error: error instanceof Error ? error.message : "Partner reward failure" }); } });
   app.post("/api/antimining/:instanceId", async (req, res) => { const instanceId = Number(req.params.instanceId); const sig = String(req.query.sig ?? ""); const event = req.body?.event; const message = req.body?.message; if (!Number.isInteger(instanceId) || !isValidVmLogSignature(instanceId, sig) || !isValidAntiminingEvent(event, message)) return res.status(400).json({ error: "invalid-antimining-event" }); const instance = await db.getVmById(instanceId); if (!instance) return res.status(404).json({ error: "instance-not-found" }); console.info("[Antimining]", { instanceId, event, message }); await db.appendVmLog(instanceId, `[Antimining:${event}] ${message}`); if (event === "violation") { await db.updateVmFromCallback(instanceId, { status: "failed" }); await notifyAntiminingViolation(bot, instance, message); } await sendAntiminingWebhook({ instanceId, hostname: instance.hostname, event, message }); res.json({ ok: true }); });
   registerVmCallbackRoute(app, instance => notifyVpsCompletion(bot, instance));
+  registerWebAuthRoutes(app);
+  const webRoot = path.join(process.cwd(), "dist", "public");
+  app.use(express.static(webRoot));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api/") || req.path.startsWith("/auth/") || req.path.startsWith("/coin/")) return next();
+    res.sendFile(path.join(webRoot, "index.html"), error => { if (error) next(); });
+  });
   const port = Number(process.env.PORT);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("The hosting provider must supply a valid PORT.");
   app.listen(port, () => console.info("[FrierenCloud] Callback service is listening."));

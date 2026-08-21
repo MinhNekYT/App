@@ -4,8 +4,9 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "NODE_ENV=development tsx watch bot/index.ts",
-    "build": "esbuild bot/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "dev": "npm run web:build && NODE_ENV=development tsx watch bot/index.ts",
+    "web:build": "vite build",
+    "build": "npm run web:build && esbuild bot/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "bot:start": "NODE_ENV=production node dist/index.js",
     "bot:deploy-commands": "tsx bot/deploy-commands.ts",
