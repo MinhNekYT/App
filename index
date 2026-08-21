@@ -1,2 +1,2 @@
-// Extensionless production entrypoint. Run `npm run build` once, then start with `node index`.
-import "./dist/index.js";
+// Extensionless self-contained production entrypoint. Start with `node index`.
+import "./runtime/index.js";

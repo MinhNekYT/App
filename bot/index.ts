@@ -27,7 +27,7 @@ async function main() {
   app.post("/api/antimining/:instanceId", async (req, res) => { const instanceId = Number(req.params.instanceId); const sig = String(req.query.sig ?? ""); const event = req.body?.event; const message = req.body?.message; if (!Number.isInteger(instanceId) || !isValidVmLogSignature(instanceId, sig) || !isValidAntiminingEvent(event, message)) return res.status(400).json({ error: "invalid-antimining-event" }); const instance = await db.getVmById(instanceId); if (!instance) return res.status(404).json({ error: "instance-not-found" }); console.info("[Antimining]", { instanceId, event, message }); await db.appendVmLog(instanceId, `[Antimining:${event}] ${message}`); if (event === "violation") { await db.updateVmFromCallback(instanceId, { status: "failed" }); await notifyAntiminingViolation(bot, instance, message); } await sendAntiminingWebhook({ instanceId, hostname: instance.hostname, event, message }); res.json({ ok: true }); });
   registerVmCallbackRoute(app, instance => notifyVpsCompletion(bot, instance));
   registerWebAuthRoutes(app);
-  const webRoot = path.join(process.cwd(), "dist", "public");
+  const webRoot = path.join(process.cwd(), "runtime", "public");
   app.use(express.static(webRoot));
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api/") || req.path.startsWith("/auth/") || req.path.startsWith("/coin/")) return next();

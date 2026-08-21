@@ -76,3 +76,6 @@
 - [x] Document required host environment variables and direct startup commands for deployment.
 - [x] Validate the hosted build contract and upload the hosting configuration to MinhNekYT/App.
 - [x] Sync the Dockerfile and npm hosting documentation to MinhNekYT/App at commit `727e10a`; the sandbox has no Docker engine for an image-level build, but the exact npm ci/build/direct-node contract was verified locally.
+- [x] Remove Docker hosting artifacts and Docker-specific documentation.
+- [x] Ship a self-contained direct Node runtime so `node index` and `node index.js` do not require npm build/dev commands.
+- [ ] Verify both direct-run commands and upload the Docker-free source to MinhNekYT/App.

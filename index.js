@@ -1,2 +1,2 @@
-// Production entrypoint. Run `npm run build` once, then start with `node index.js`.
-import "./dist/index.js";
+// Self-contained production entrypoint. Start with `node index.js`.
+import "./runtime/index.js";
