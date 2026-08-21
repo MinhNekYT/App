@@ -1,7 +1,7 @@
 # Project TODO
 
 - [x] Thiết kế dữ liệu VM instance và phiên tạo workflow có trạng thái, thời gian tạo và đường dẫn SSHX thực tế.
-- [x] Triển khai Discord OAuth2 với callback an toàn, session ứng dụng và tự chuyển vào VM Instances sau khi đăng nhập.
+- [] Triển khai Discord OAuth2 với callback an toàn, session ứng dụng và tự chuyển vào VM Instances sau khi đăng nhập.
 - [x] Xây dựng khung giao diện FrierenCloud theo phong cách architectural blueprint với bottom navigation chỉ gồm VM Instances và Settings.
 - [x] Xây dựng trạng thái trống VM Instances với nút chính xác "Tạo một Linux VPS" và luồng điều hướng sang màn tạo máy.
 - [x] Xây dựng form tạo Linux VPS gồm tên máy, GitHub token không lưu lâu dài, checkbox xác nhận bắt buộc và nút "Xác nhận".
