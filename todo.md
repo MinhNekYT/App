@@ -96,3 +96,5 @@
 - [x] Verify web VPS creation and per-user log retrieval through the Node-only API contract.
 - [x] Add `/coin receive` rejection tests for non-admin users and recipients without a confirmed contribution token.
 - [x] Add automated Node-only API verification for web VPS creation and per-user VM log retrieval.
+- [x] Add a provider-neutral README for direct Node.js startup, `.env`, IPv4/port, domain, and Discord OAuth2 deployment.
+- [ ] Verify README commands and upload the hosting guide to MinhNekYT/App.
