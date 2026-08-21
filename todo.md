@@ -88,7 +88,7 @@
 - [x] Add contribution-based coin acquisition through an admin-reviewed credit for a confirmed secondary-account GitHub token, without exposing token values.
 - [x] Add a persisted Vietnamese/English preference that synchronizes bot responses and web interface for the same Discord user.
 - [x] Test bilingual synchronization, optional hostname defaults, contribution confirmation, authorization, and web data isolation.
-- [ ] Upload the verified bilingual VPS-and-coins update to MinhNekYT/App.
+- [x] Upload the verified bilingual VPS-and-coins update to MinhNekYT/App at commit `0e293e1`.
 - [x] Remove Vite and React build tooling, replacing it with a Node.js-served dashboard asset architecture compatible with direct Node startup.
 - [x] Verify the final Node-served dashboard is the active web UI and record desktop/mobile behavior without Vite.
 - [x] Add regression tests for `/coin receive` admin authorization, contribution recipient validation, and approved coin credit.
