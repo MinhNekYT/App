@@ -72,3 +72,7 @@
 - [x] Document and verify the direct-node production command, then upload the update to MinhNekYT/App at commit `f208e72`.
 - [x] Remove the Vite-5-only JSX location plugin that blocks npm dependency resolution with Vite 7.
 - [x] Regenerate package-lock with plain npm install, validate tests/build, and upload the dependency fix to MinhNekYT/App at commit `a60d027`.
+- [x] Add an npm-based container runtime configuration for hosting the persistent bot and web server.
+- [x] Document required host environment variables and direct startup commands for deployment.
+- [x] Validate the hosted build contract and upload the hosting configuration to MinhNekYT/App.
+- [ ] Sync the Dockerfile and npm hosting documentation to MinhNekYT/App, recording that the sandbox has no Docker engine for an image-level build.

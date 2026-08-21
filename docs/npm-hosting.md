@@ -3,13 +3,24 @@
 FrierenCloud runs the Discord Gateway bot and the daily-claim webpage from the same persistent Node.js service and one `BASE_URL`. The bot must run on a host that keeps the process alive; serverless functions cannot hold the Discord Gateway connection.
 
 ```bash
-npm install --legacy-peer-deps
+npm ci
 npm run build
 npm run bot:deploy-commands
 node index.js
 ```
 
 `node index` is also supported. The root entrypoint imports the built bot-and-web runtime from `dist/index.js`, so you only need to run the build again after changing source code.
+
+## Container hosting
+
+The included `Dockerfile` uses the committed npm lockfile, runs `npm ci --ignore-scripts`, builds the React dashboard and Node.js runtime, then starts the persistent service with `node index.js`. The same npm install, type-check, test, and build contract is verified locally; the hosting provider builds the image from the committed Dockerfile. Configure all required variables from `docs/environment-template.md` in the hosting provider’s secret manager; do not copy `.env` into the image.
+
+```bash
+docker build -t frierencloud .
+docker run --env-file .env -p 3000:3000 frierencloud
+```
+
+Set `PORT` only when your host requires a specific listening port. The bot needs a host that keeps the Node.js process running continuously because Discord Gateway connections are persistent.
 
 Copy `docs/environment-template.md` into the host’s untracked `.env` file, populate the required values, and set `BASE_URL` to the public HTTPS address for that same host. The separate avatar asset is available at `/manus-storage/frierencloud-bot-avatar_d0bb8fd1.png`; set `BOT_AVATAR_URL` to the corresponding absolute public URL if your host needs one.
 
