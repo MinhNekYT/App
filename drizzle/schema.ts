@@ -91,6 +91,19 @@ export const botUserAccess = mysqlTable("botUserAccess", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const userPreferences = mysqlTable("userPreferences", {
+  userId: int("userId").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  locale: mysqlEnum("locale", ["en", "vi"]).notNull().default("en"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const userContributionTokens = mysqlTable("userContributionTokens", {
+  userId: int("userId").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  encryptedToken: text("encryptedToken").notNull(),
+  confirmedAt: timestamp("confirmedAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const coinClaimLinks = mysqlTable("coinClaimLinks", {
   id: varchar("id", { length: 48 }).primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),

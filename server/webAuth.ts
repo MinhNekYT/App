@@ -1,7 +1,10 @@
 import axios from "axios";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
-import type { Express, Request, Response } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import * as db from "./db";
+import { createClaimSignature } from "./claimSignature";
+import { normalizeLocale } from "./language";
+import { provisionVps } from "./provisioning";
 
 const SESSION_COOKIE = "frierencloud_web_session";
 const STATE_COOKIE = "frierencloud_oauth_state";
@@ -152,8 +155,36 @@ export function registerWebAuthRoutes(app: Express) {
   app.get("/api/web/dashboard", async (req, res) => {
     const session = readSession(req);
     if (!session) return unauthorized(res);
-    const [coins, instances] = await Promise.all([db.getCoinBalance(session.userId), db.listVmInstances(session.userId)]);
-    res.json({ user: session, coins, instances: instances.map(instance => ({ id: instance.id, hostname: instance.hostname, ubuntuVersion: instance.ubuntuVersion, status: instance.status, sshxUrl: instance.sshxUrl, createdAt: instance.createdAt })) });
+    const [coins, instances, locale, dailyLimit, dailyUsage, contributionConfigured] = await Promise.all([db.getCoinBalance(session.userId), db.listVmInstances(session.userId), db.getUserLocale(session.userId), db.getDailyClaimLimit(), db.getDailyClaimUsageToday(session.userId), db.hasContributionToken(session.userId)]);
+    res.json({ user: session, coins, locale, daily: { limit: dailyLimit, used: dailyUsage }, contributionConfigured, instances: instances.map(instance => ({ id: instance.id, hostname: instance.hostname, ubuntuVersion: instance.ubuntuVersion, status: instance.status, sshxUrl: instance.sshxUrl, createdAt: instance.createdAt })) });
+  });
+
+  app.post("/api/web/language", express.json(), async (req, res) => {
+    const session = readSession(req);
+    if (!session) return unauthorized(res);
+    const locale = await db.setUserLocale(session.userId, normalizeLocale(req.body?.locale));
+    res.json({ locale });
+  });
+
+  app.post("/api/web/coin/daily", async (req, res) => {
+    const session = readSession(req);
+    if (!session) return unauthorized(res);
+    const link = await db.createCoinClaimLink({ userId: session.userId, discordName: session.name, avatarUrl: session.avatarUrl });
+    res.json({ url: `${publicBaseUrl()}/coin/${link.id}?sig=${createClaimSignature(link.id)}`, expiresAt: link.expiresAt });
+  });
+
+  app.post("/api/web/vms", express.json(), async (req, res) => {
+    const session = readSession(req);
+    if (!session) return unauthorized(res);
+    if ((await db.getBotAccess(session.userId)).isBanned) return res.status(403).json({ error: "account_banned" });
+    const ubuntuVersion = req.body?.ubuntuVersion === "22.04" ? "22.04" : "24.04";
+    try {
+      const instance = await provisionVps({ userId: session.userId, hostname: typeof req.body?.hostname === "string" ? req.body.hostname : "", ubuntuVersion });
+      res.status(201).json({ instance });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to create VPS.";
+      res.status(message.includes("need") ? 400 : 500).json({ error: message });
+    }
   });
 
   app.get("/api/web/vms/:instanceId", async (req, res) => {

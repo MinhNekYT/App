@@ -21,7 +21,7 @@ export async function setAntiminingWebhook(url: string) {
   await db.setBotSetting(antiminingWebhookSettingKey, encryptGithubToken(validateDiscordWebhookUrl(url)));
 }
 
-export async function sendAntiminingWebhook(input: { instanceId: number; hostname: string; event: "installed" | "heartbeat" | "terminated"; message: string }) {
+export async function sendAntiminingWebhook(input: { instanceId: number; hostname: string; event: "installed" | "heartbeat" | "terminated" | "alert" | "violation"; message: string }) {
   const encrypted = await db.getBotSetting(antiminingWebhookSettingKey);
   if (!encrypted) return false;
   try {

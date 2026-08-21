@@ -1,17 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import * as db from "./db";
+import * as provisioning from "./provisioning";
 import { createWebSession, parseWebSession } from "./webAuth";
 import { registerWebAuthRoutes } from "./webAuth";
 
 const secret = "test-web-session-secret";
 
-async function requestFrom(app: express.Express, path: string, cookie?: string) {
+async function requestFrom(app: express.Express, path: string, cookie?: string, init: RequestInit = {}) {
   const server = app.listen(0);
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("Test server did not start");
   try {
-    return await fetch(`http://127.0.0.1:${address.port}${path}`, { headers: cookie ? { Cookie: cookie } : undefined });
+    return await fetch(`http://127.0.0.1:${address.port}${path}`, { ...init, headers: { ...(cookie ? { Cookie: cookie } : {}), ...(init.headers ?? {}) } });
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
@@ -84,5 +85,29 @@ describe("FrierenCloud web sessions", () => {
     const response = await requestFrom(app, "/api/web/vms/99", `frierencloud_web_session=${session}`);
     expect(response.status).toBe(404);
     expect(db.getVmForUser).toHaveBeenCalledWith(99, 12);
+  });
+
+  it("creates a VPS through the Node-only web API using the signed user's optional hostname", async () => {
+    const app = express();
+    registerWebAuthRoutes(app);
+    vi.spyOn(db, "getBotAccess").mockResolvedValue({ isBanned: false } as any);
+    vi.spyOn(provisioning, "provisionVps").mockResolvedValue({ id: 7, hostname: "frierencloud", status: "running" } as any);
+    const session = createWebSession({ userId: 12, discordId: "987654321", name: "Frieren", avatarUrl: "https://cdn.example/avatar.png", expiresAt: Date.now() + 60_000 });
+    const response = await requestFrom(app, "/api/web/vms", `frierencloud_web_session=${session}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ hostname: "", ubuntuVersion: "24.04" }) });
+    expect(response.status).toBe(201);
+    expect(provisioning.provisionVps).toHaveBeenCalledWith({ userId: 12, hostname: "", ubuntuVersion: "24.04" });
+  });
+
+  it("returns only the signed user's requested VPS logs through the Node-only API", async () => {
+    const app = express();
+    registerWebAuthRoutes(app);
+    vi.spyOn(db, "getVmForUser").mockResolvedValue({ id: 7, userId: 12, hostname: "frierencloud", status: "running" } as any);
+    vi.spyOn(db, "getVmLogs").mockResolvedValue([{ id: 1, instanceId: 7, message: "workflow started", createdAt: new Date() }] as any);
+    const session = createWebSession({ userId: 12, discordId: "987654321", name: "Frieren", avatarUrl: "https://cdn.example/avatar.png", expiresAt: Date.now() + 60_000 });
+    const response = await requestFrom(app, "/api/web/vms/7", `frierencloud_web_session=${session}`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ instance: { id: 7 }, logs: [{ message: "workflow started" }] });
+    expect(db.getVmForUser).toHaveBeenCalledWith(7, 12);
+    expect(db.getVmLogs).toHaveBeenCalledWith(7);
   });
 });

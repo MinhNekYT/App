@@ -81,3 +81,18 @@
 - [x] Verify both direct-run commands and upload the Docker-free source to MinhNekYT/App at commit `262d8bc`.
 - [x] Ensure the GitHub Actions VPS workflow uses `curl -sSf https://sshx.io/get | sh -s run` exactly.
 - [x] Verify the SSHX workflow command configuration in MinhNekYT/App at commit `44b4f42`.
+- [x] Add web menu destinations for VPS Instances, Get Coins (contribute), Get Coins (daily), synchronized profile balance, and logout.
+- [x] Add web VPS creation with optional hostname defaulting to `frierencloud`, shared coin debit rules, and per-user provisioning logs.
+- [x] Add `/coin receive coins:<number>` with safe admin-reviewed coin credit controls for confirmed contributions.
+- [x] Add `/token contribute token:<token>` with encrypted token storage and the required explicit Confirm-button warning flow.
+- [x] Add contribution-based coin acquisition through an admin-reviewed credit for a confirmed secondary-account GitHub token, without exposing token values.
+- [x] Add a persisted Vietnamese/English preference that synchronizes bot responses and web interface for the same Discord user.
+- [x] Test bilingual synchronization, optional hostname defaults, contribution confirmation, authorization, and web data isolation.
+- [ ] Upload the verified bilingual VPS-and-coins update to MinhNekYT/App.
+- [x] Remove Vite and React build tooling, replacing it with a Node.js-served dashboard asset architecture compatible with direct Node startup.
+- [x] Verify the final Node-served dashboard is the active web UI and record desktop/mobile behavior without Vite.
+- [x] Add regression tests for `/coin receive` admin authorization, contribution recipient validation, and approved coin credit.
+- [x] Add regression tests for `/token contribute` Confirm-button ownership, expiry, and encrypted persistence.
+- [x] Verify web VPS creation and per-user log retrieval through the Node-only API contract.
+- [x] Add `/coin receive` rejection tests for non-admin users and recipients without a confirmed contribution token.
+- [x] Add automated Node-only API verification for web VPS creation and per-user VM log retrieval.

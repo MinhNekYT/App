@@ -1,9 +1,10 @@
 // bot/index.ts
-import express from "express";
+import express2 from "express";
 import path from "node:path";
 
 // bot/service.ts
-import { Client, EmbedBuilder, Events, GatewayIntentBits } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder, Events, GatewayIntentBits } from "discord.js";
+import { randomUUID } from "node:crypto";
 
 // server/db.ts
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -85,6 +86,17 @@ var botUserAccess = mysqlTable("botUserAccess", {
   lastPartnerRewardMonth: varchar("lastPartnerRewardMonth", { length: 7 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
 });
+var userPreferences = mysqlTable("userPreferences", {
+  userId: int("userId").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  locale: mysqlEnum("locale", ["en", "vi"]).notNull().default("en"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
+});
+var userContributionTokens = mysqlTable("userContributionTokens", {
+  userId: int("userId").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  encryptedToken: text("encryptedToken").notNull(),
+  confirmedAt: timestamp("confirmedAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
+});
 var coinClaimLinks = mysqlTable("coinClaimLinks", {
   id: varchar("id", { length: 48 }).primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -118,6 +130,31 @@ var ENV = {
 
 // server/db.ts
 import { nanoid } from "nanoid";
+
+// server/language.ts
+function normalizeLocale(value) {
+  return value === "vi" ? "vi" : "en";
+}
+var copy = {
+  en: {
+    banned: "ERROR: You have been banned by an admin. If you think this is a misunderstanding, please contact any admin via DMS.",
+    notAdmin: "ERROR: You cannot use this command because you are not an administrator.",
+    tokenStored: "GitHub token stored securely.",
+    contributionStored: "Your contribution token was stored securely. An administrator can credit contribution coins after review.",
+    languageSaved: "Language saved. FrierenCloud bot and web now use English for your account.",
+    noContribution: "Confirm a contribution token first with `/token contribute`."
+  },
+  vi: {
+    banned: "L\u1ED6I: B\u1EA1n \u0111\xE3 b\u1ECB admin c\u1EA5m. N\u1EBFu cho r\u1EB1ng \u0111\xE2y l\xE0 nh\u1EA7m l\u1EABn, h\xE3y li\xEAn h\u1EC7 admin qua DM.",
+    notAdmin: "L\u1ED6I: B\u1EA1n kh\xF4ng th\u1EC3 d\xF9ng l\u1EC7nh n\xE0y v\xEC kh\xF4ng ph\u1EA3i qu\u1EA3n tr\u1ECB vi\xEAn.",
+    tokenStored: "GitHub token \u0111\xE3 \u0111\u01B0\u1EE3c l\u01B0u an to\xE0n.",
+    contributionStored: "Contribution token c\u1EE7a b\u1EA1n \u0111\xE3 \u0111\u01B0\u1EE3c l\u01B0u an to\xE0n. Admin c\xF3 th\u1EC3 c\u1ED9ng xu \u0111\xF3ng g\xF3p sau khi x\xE9t duy\u1EC7t.",
+    languageSaved: "\u0110\xE3 l\u01B0u ng\xF4n ng\u1EEF. Bot v\xE0 web FrierenCloud hi\u1EC7n d\xF9ng ti\u1EBFng Vi\u1EC7t cho t\xE0i kho\u1EA3n c\u1EE7a b\u1EA1n.",
+    noContribution: "H\xE3y x\xE1c nh\u1EADn contribution token tr\u01B0\u1EDBc b\u1EB1ng `/token contribute`."
+  }
+};
+
+// server/db.ts
 var _db = null;
 async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
@@ -322,6 +359,29 @@ async function setBotAccess(userId, values) {
   await db.update(botUserAccess).set({ ...values, updatedAt: /* @__PURE__ */ new Date() }).where(eq(botUserAccess.userId, userId));
   return getBotAccess(userId);
 }
+async function getUserLocale(userId) {
+  const db = await getDb();
+  requireDatabase(db);
+  const result = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId)).limit(1);
+  return normalizeLocale(result[0]?.locale);
+}
+async function setUserLocale(userId, locale) {
+  const db = await getDb();
+  requireDatabase(db);
+  await db.insert(userPreferences).values({ userId, locale }).onDuplicateKeyUpdate({ set: { locale, updatedAt: /* @__PURE__ */ new Date() } });
+  return locale;
+}
+async function saveContributionToken(userId, encryptedToken) {
+  const db = await getDb();
+  requireDatabase(db);
+  await db.insert(userContributionTokens).values({ userId, encryptedToken, confirmedAt: /* @__PURE__ */ new Date() }).onDuplicateKeyUpdate({ set: { encryptedToken, confirmedAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() } });
+}
+async function hasContributionToken(userId) {
+  const db = await getDb();
+  requireDatabase(db);
+  const result = await db.select({ userId: userContributionTokens.userId }).from(userContributionTokens).where(eq(userContributionTokens.userId, userId)).limit(1);
+  return Boolean(result[0]);
+}
 async function createCoinClaimLink(input) {
   const db = await getDb();
   requireDatabase(db);
@@ -364,6 +424,13 @@ async function redeemCoinClaimLink(id, reward = 1) {
     await tx.insert(coinTransactions).values({ userId: link.userId, actorUserId: null, amount: reward, reason: "daily_claim" });
   });
   return getCoinBalance(link.userId);
+}
+async function getDailyClaimUsageToday(userId) {
+  const db = await getDb();
+  requireDatabase(db);
+  const claimDate = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const result = await db.select().from(dailyClaimUsage).where(and(eq(dailyClaimUsage.userId, userId), eq(dailyClaimUsage.claimDate, claimDate))).limit(1);
+  return result[0]?.count ?? 0;
 }
 async function awardDuePartnerRewards() {
   const db = await getDb();
@@ -452,10 +519,10 @@ function encryptionKey() {
   if (!ENV.cookieSecret) throw new Error("JWT_SECRET is required before saving a GitHub token.");
   return createHash("sha256").update(ENV.cookieSecret).digest();
 }
-function encryptGithubToken(token2) {
+function encryptGithubToken(token) {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
-  const encrypted = Buffer.concat([cipher.update(token2, "utf8"), cipher.final()]);
+  const encrypted = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
   return Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64url");
 }
 function decryptGithubToken(payload) {
@@ -521,15 +588,6 @@ function formatAuditCommand(input) {
   return `Command audit \xB7 <@${input.userId}> (${input.userTag}) ran /${input.commandName}${serialized ? ` ${serialized}` : ""}`;
 }
 
-// bot/access.ts
-function hasOwnerAccess(discordUserId, ownerId) {
-  const configuredOwnerId = ownerId?.trim();
-  return Boolean(configuredOwnerId) && discordUserId === configuredOwnerId;
-}
-function hasAdminAccess(discordUserId, ownerId, adminIds) {
-  return hasOwnerAccess(discordUserId, ownerId) || adminIds.includes(discordUserId);
-}
-
 // bot/config.ts
 import "dotenv/config";
 
@@ -564,10 +622,53 @@ function requireBotRuntimeConfig() {
   if (missing.length > 0) throw new Error(`Missing required bot configuration: ${missing.join(", ")}`);
 }
 
-// bot/service.ts
+// server/provisioning.ts
 var VPS_COST = 2;
-var BANNED = "ERROR: You have been banned by an admin. If you think this is a misunderstanding, please contact any admin via DMS.";
-var NOT_ADMIN = "ERROR: You cannot use this command because you are not an administrator.";
+function runner() {
+  const value = botConfig.defaultRunner;
+  if (!value.githubOwner || !value.githubRepo) throw new Error("GitHub runner is not configured.");
+  return value;
+}
+async function dispatchToken() {
+  const stored = await getBotSetting(githubTokenSettingKey);
+  if (!stored) throw new Error(GITHUB_ACCOUNT_ACCESS_ERROR);
+  try {
+    return decryptGithubToken(stored);
+  } catch {
+    throw new Error(GITHUB_ACCOUNT_ACCESS_ERROR);
+  }
+}
+async function provisionVps(input) {
+  const hostname = validateLinuxHostname(input.hostname?.trim() || "frierencloud");
+  if (!await reserveCoinsForVps({ userId: input.userId, cost: VPS_COST })) throw new Error(`You need ${VPS_COST} coins to create a VPS.`);
+  try {
+    const configuredRunner = runner();
+    const vm = await createVmInstance({ userId: input.userId, hostname, ubuntuVersion: input.ubuntuVersion, githubOwner: configuredRunner.githubOwner, githubRepo: configuredRunner.githubRepo, workflowFile: configuredRunner.workflowFile });
+    await appendVmLog(vm.id, `Provisioning requested for hostname ${hostname}.`);
+    const callbackUrl = `${botConfig.publicBaseUrl}/api/vm-logs/${vm.id}?sig=${createVmLogSignature(vm.id)}`;
+    const antiminingUrl = `${botConfig.publicBaseUrl}/api/antimining/${vm.id}?sig=${createVmLogSignature(vm.id)}`;
+    const run = await dispatchWorkflow({ owner: configuredRunner.githubOwner, repo: configuredRunner.githubRepo, workflowFile: configuredRunner.workflowFile, ref: configuredRunner.ref, hostname, ubuntuVersion: input.ubuntuVersion, callbackUrl, antiminingUrl, token: await dispatchToken() });
+    await updateVmFromCallback(vm.id, { workflowRunId: String(run.runId ?? ""), status: "running" });
+    await appendVmLog(vm.id, "GitHub Actions workflow dispatched successfully.");
+    return { ...await getVmById(vm.id), refunded: false };
+  } catch (error) {
+    await addCoins({ userId: input.userId, actorUserId: input.userId, amount: VPS_COST, reason: "vps_create_refund" });
+    throw error;
+  }
+}
+
+// bot/access.ts
+function hasOwnerAccess(discordUserId, ownerId) {
+  const configuredOwnerId = ownerId?.trim();
+  return Boolean(configuredOwnerId) && discordUserId === configuredOwnerId;
+}
+function hasAdminAccess(discordUserId, ownerId, adminIds) {
+  return hasOwnerAccess(discordUserId, ownerId) || adminIds.includes(discordUserId);
+}
+
+// bot/service.ts
+var CONTRIBUTION_WARNING = 'ARE YOU SURE THIS IS THE TOKEN FOR THE GITHUB SECONDARY ACCOUNT? THIS ACTION MAY RESULT IN THE ACCOUNT BEING BANNED. IF YOU AGREE, CLICK THE "Confirm" BUTTON BELOW.';
+var pendingContributions = /* @__PURE__ */ new Map();
 async function ensureUser(discordId, name) {
   const openId = `discord_${discordId}`;
   await upsertUser({ openId, name, loginMethod: "discord-bot", lastSignedIn: /* @__PURE__ */ new Date() });
@@ -577,59 +678,64 @@ async function ensureUser(discordId, name) {
 }
 async function currentUser(i) {
   const user = await ensureUser(i.user.id, i.user.globalName || i.user.username);
+  const locale = await getUserLocale(user.id);
   if ((await getBotAccess(user.id)).isBanned) {
-    await i.reply({ content: BANNED, ephemeral: true });
+    await i.reply({ content: copy[locale].banned, ephemeral: true });
     return null;
   }
-  return user;
+  return { user, locale };
 }
-async function admin(i, user) {
+async function admin(i, user, locale) {
   const dynamic = (await getBotAccess(user.id)).isAdmin;
   if (!dynamic && !hasAdminAccess(i.user.id, botConfig.ownerId, botConfig.adminIds)) {
-    await i.reply({ content: NOT_ADMIN, ephemeral: true });
+    await i.reply({ content: copy[locale].notAdmin, ephemeral: true });
     return false;
   }
   return true;
 }
-function runner() {
-  const r = botConfig.defaultRunner;
-  if (!r.githubOwner || !r.githubRepo) throw new Error("GitHub runner is not configured.");
-  return r;
-}
-async function token() {
-  const v = await getBotSetting(githubTokenSettingKey);
-  if (!v) throw new Error(GITHUB_ACCOUNT_ACCESS_ERROR);
-  try {
-    return decryptGithubToken(v);
-  } catch {
-    throw new Error(GITHUB_ACCOUNT_ACCESS_ERROR);
-  }
-}
 function card(v) {
   return new EmbedBuilder().setColor(9169405).setTitle(`Ubuntu ${v.ubuntuVersion} VPS #${v.id} \xB7 ${v.hostname}`).addFields({ name: "Status", value: v.status, inline: true }, { name: "SSHX", value: v.sshxUrl || "Waiting for real workflow output" });
 }
+function prunePendingContributions() {
+  const now = Date.now();
+  for (const [id, value] of pendingContributions) if (value.expiresAt <= now) pendingContributions.delete(id);
+}
 async function handleCommand(i) {
-  const user = await currentUser(i);
-  if (!user) return;
-  if (i.commandName === "help") return i.reply({ content: "`/coin daily` \xB7 `/balance` \xB7 `/create` \xB7 `/manage` \xB7 `/info` \xB7 `/token` \xB7 `/webhook` \xB7 `/give` \xB7 `/user`", ephemeral: true });
+  const context = await currentUser(i);
+  if (!context) return;
+  const { user, locale } = context;
+  if (i.commandName === "help") return i.reply({ content: locale === "vi" ? "`/coin daily` \xB7 `/balance` \xB7 `/create` \xB7 `/manage` \xB7 `/language` \xB7 `/token contribute`" : "`/coin daily` \xB7 `/balance` \xB7 `/create` \xB7 `/manage` \xB7 `/language` \xB7 `/token contribute`", ephemeral: true });
   if (i.commandName === "info") return i.reply({ content: `\u2139\uFE0F | FrierenCloud Info
 \u{1F451} | Owner: <@${botConfig.ownerId ?? "1071750161488937060"}>
 \u{1F4BF} | Version: 1.0
 \u{1F916} | Ping: ${i.client.ws.ping}ms`, ephemeral: true });
-  if (i.commandName === "balance") return i.reply({ content: `Your balance is **${await getCoinBalance(user.id)} coins**.`, ephemeral: true });
+  if (i.commandName === "balance") return i.reply({ content: locale === "vi" ? `S\u1ED1 d\u01B0 c\u1EE7a b\u1EA1n l\xE0 **${await getCoinBalance(user.id)} xu**.` : `Your balance is **${await getCoinBalance(user.id)} coins**.`, ephemeral: true });
+  if (i.commandName === "language") {
+    const saved = await setUserLocale(user.id, normalizeLocale(i.options.getString("language", true)));
+    return i.reply({ content: copy[saved].languageSaved, ephemeral: true });
+  }
   if (i.commandName === "coin") {
     const sub = i.options.getSubcommand();
     if (sub === "maximum-daily") {
-      if (!await admin(i, user)) return;
+      if (!await admin(i, user, locale)) return;
       const times = i.options.getInteger("times", true);
       await setDailyClaimLimit(times);
       return i.reply({ content: `Maximum daily claims set to **${times}**.`, ephemeral: true });
+    }
+    if (sub === "receive") {
+      if (!await admin(i, user, locale)) return;
+      const target = i.options.getUser("user", true);
+      const recipient = await ensureUser(target.id, target.globalName || target.username);
+      if (!await hasContributionToken(recipient.id)) return i.reply({ content: copy[locale].noContribution, ephemeral: true });
+      const coins = i.options.getInteger("coins", true);
+      const balance = await addCoins({ userId: recipient.id, actorUserId: user.id, amount: coins, reason: "contribution_review" });
+      return i.reply({ content: `Contribution approved: **${coins} coins** credited to ${target}. New balance: **${balance}**.`, ephemeral: true });
     }
     const link = await createCoinClaimLink({ userId: user.id, discordName: i.user.globalName || i.user.username, avatarUrl: i.user.displayAvatarURL() });
     return i.reply({ content: `Claim link (expires in 15 minutes): ${botConfig.publicBaseUrl}/coin/${link.id}?sig=${createClaimSignature(link.id)}`, ephemeral: true });
   }
   if (i.commandName === "user") {
-    if (!await admin(i, user)) return;
+    if (!await admin(i, user, locale)) return;
     const id = i.options.getString("user_id", true);
     const target = await ensureUser(id, `Discord user ${id}`);
     const subcommand = i.options.getSubcommand();
@@ -641,24 +747,31 @@ async function handleCommand(i) {
     return i.reply({ content: `User ${id} updated: ${sub}.`, ephemeral: true });
   }
   if (i.commandName === "token") {
-    if (!await admin(i, user)) return;
-    await setBotSetting(githubTokenSettingKey, encryptGithubToken(i.options.getString("github_token", true)));
-    return i.reply({ content: "GitHub token stored securely.", ephemeral: true });
+    const sub = i.options.getSubcommand();
+    if (sub === "github") {
+      if (!await admin(i, user, locale)) return;
+      await setBotSetting(githubTokenSettingKey, encryptGithubToken(i.options.getString("github_token", true)));
+      return i.reply({ content: copy[locale].tokenStored, ephemeral: true });
+    }
+    prunePendingContributions();
+    const id = randomUUID();
+    pendingContributions.set(id, { discordId: i.user.id, token: i.options.getString("token", true), expiresAt: Date.now() + 5 * 60 * 1e3 });
+    return i.reply({ content: CONTRIBUTION_WARNING, components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`fc-contribute-confirm:${id}`).setLabel("Confirm").setStyle(ButtonStyle.Danger))], ephemeral: true });
   }
   if (i.commandName === "webhook") {
-    if (!await admin(i, user)) return;
+    if (!await admin(i, user, locale)) return;
     await setAntiminingWebhook(i.options.getString("webhook_url", true));
     return i.reply({ content: "FrierenCloud Antimining webhook configured securely.", ephemeral: true });
   }
   if (i.commandName === "logs") {
-    if (!await admin(i, user)) return;
+    if (!await admin(i, user, locale)) return;
     const channel = i.options.getChannel("channel", true);
-    if (!channel.isTextBased() || !("send" in channel)) return i.reply({ content: "Please choose a text-based channel.", ephemeral: true });
+    if (!channel.isTextBased?.() || !("send" in channel)) return i.reply({ content: "Please choose a text-based channel.", ephemeral: true });
     await setBotSetting(auditLogChannelSettingKey, channel.id);
     return i.reply({ content: `Command audit logging enabled for <#${channel.id}>.`, ephemeral: true });
   }
   if (i.commandName === "give") {
-    if (!await admin(i, user)) return;
+    if (!await admin(i, user, locale)) return;
     const target = i.options.getUser("user", true);
     const coins = i.options.getInteger("coins", true);
     const recipient = await ensureUser(target.id, target.globalName || target.username);
@@ -671,50 +784,54 @@ async function handleCommand(i) {
   }
   if (i.commandName === "create") {
     await i.deferReply({ ephemeral: true });
-    const hostname = validateLinuxHostname(i.options.getString("hostname", true));
-    const ubuntuVersion = i.options.getString("ubuntu", true);
-    if (!await reserveCoinsForVps({ userId: user.id, cost: VPS_COST })) return i.editReply(`You need **${VPS_COST} coins** to create a VPS.`);
     try {
-      const r = runner();
-      const vm = await createVmInstance({ userId: user.id, hostname, ubuntuVersion, githubOwner: r.githubOwner, githubRepo: r.githubRepo, workflowFile: r.workflowFile });
-      const callbackUrl = `${botConfig.publicBaseUrl}/api/vm-logs/${vm.id}?sig=${createVmLogSignature(vm.id)}`;
-      const antiminingUrl = `${botConfig.publicBaseUrl}/api/antimining/${vm.id}?sig=${createVmLogSignature(vm.id)}`;
-      const run = await dispatchWorkflow({ ...r, hostname, ubuntuVersion, callbackUrl, antiminingUrl, token: await token() });
-      await updateVmFromCallback(vm.id, { workflowRunId: String(run.runId ?? ""), status: "running" });
-      return i.editReply({ embeds: [card({ ...vm, status: "running" })] });
-    } catch (e) {
-      await addCoins({ userId: user.id, actorUserId: user.id, amount: VPS_COST, reason: "vps_create_refund" });
-      if (e instanceof Error && e.message === GITHUB_ACCOUNT_ACCESS_ERROR) return i.editReply(GITHUB_ACCOUNT_ACCESS_ERROR);
-      return i.editReply(`Provisioning failed and your ${VPS_COST} coins were refunded. ${e instanceof Error ? e.message : ""}`);
+      const vm = await provisionVps({ userId: user.id, hostname: i.options.getString("hostname", false), ubuntuVersion: i.options.getString("ubuntu", true) });
+      return i.editReply({ embeds: [card(vm)] });
+    } catch (error) {
+      if (error instanceof Error && error.message === GITHUB_ACCOUNT_ACCESS_ERROR) return i.editReply(GITHUB_ACCOUNT_ACCESS_ERROR);
+      return i.editReply(`Provisioning failed and your ${VPS_COST} coins were refunded when applicable. ${error instanceof Error ? error.message : ""}`);
     }
   }
   if (i.commandName === "status") return i.reply({ content: "FrierenCloud is online.", ephemeral: true });
+}
+async function handleContributionConfirmation(i) {
+  if (!i.customId.startsWith("fc-contribute-confirm:")) return;
+  const id = i.customId.slice("fc-contribute-confirm:".length);
+  const pending = pendingContributions.get(id);
+  if (!pending || pending.expiresAt <= Date.now() || pending.discordId !== i.user.id) return i.reply({ content: "This contribution confirmation is invalid or expired.", ephemeral: true });
+  pendingContributions.delete(id);
+  const user = await ensureUser(i.user.id, i.user.globalName || i.user.username);
+  const locale = await getUserLocale(user.id);
+  await saveContributionToken(user.id, encryptGithubToken(pending.token));
+  return i.update({ content: copy[locale].contributionStored, components: [] });
 }
 async function sendAuditLog(client, input) {
   const channelId = await getBotSetting(auditLogChannelSettingKey);
   if (!channelId) return;
   try {
     const channel = await client.channels.fetch(channelId);
-    if (channel?.isTextBased() && "send" in channel) await channel.send({ content: formatAuditCommand(input), allowedMentions: { users: [input.userId] } });
+    if (channel?.isTextBased() && "send" in channel) await channel.send({ content: formatAuditCommand({ ...input, options: input.options }), allowedMentions: { users: [input.userId] } });
   } catch (error) {
     console.warn("[FrierenCloud] Audit log delivery failed", error);
   }
 }
 function createDiscordBot() {
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-  client.once(Events.ClientReady, async (r) => {
+  client.once(Events.ClientReady, async (ready) => {
     await awardDuePartnerRewards();
-    console.info(`[FrierenCloud] Logged in as ${r.user.tag}`);
-    r.user.setActivity("/help \xB7 Ubuntu VPS control");
+    console.info(`[FrierenCloud] Logged in as ${ready.user.tag}`);
+    ready.user.setActivity("/help \xB7 Ubuntu VPS control");
   });
-  client.on(Events.InteractionCreate, async (x) => {
-    if (x.isChatInputCommand()) try {
-      await sendAuditLog(client, { userId: x.user.id, userTag: x.user.tag, commandName: x.commandName, options: x.options.data });
-      await handleCommand(x);
-    } catch (e) {
-      const m = e instanceof Error ? e.message : "Unexpected command error.";
-      if (x.deferred || x.replied) await x.editReply(`Command failed: ${m}`);
-      else await x.reply({ content: `Command failed: ${m}`, ephemeral: true });
+  client.on(Events.InteractionCreate, async (interaction) => {
+    try {
+      if (interaction.isChatInputCommand()) {
+        await sendAuditLog(client, { userId: interaction.user.id, userTag: interaction.user.tag, commandName: interaction.commandName, options: interaction.options.data });
+        await handleCommand(interaction);
+      } else if (interaction.isButton()) await handleContributionConfirmation(interaction);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unexpected command error.";
+      if (interaction.isChatInputCommand() && (interaction.deferred || interaction.replied)) await interaction.editReply(`Command failed: ${message}`);
+      else if (interaction.isRepliable()) await interaction.reply({ content: `Command failed: ${message}`, ephemeral: true });
     }
   });
   return client;
@@ -779,7 +896,8 @@ function registerVmCallbackRoute(app, onSshxReady) {
 
 // server/webAuth.ts
 import axios3 from "axios";
-import { createHmac as createHmac3, randomUUID, timingSafeEqual as timingSafeEqual3 } from "node:crypto";
+import { createHmac as createHmac3, randomUUID as randomUUID2, timingSafeEqual as timingSafeEqual3 } from "node:crypto";
+import express from "express";
 var SESSION_COOKIE = "frierencloud_web_session";
 var STATE_COOKIE = "frierencloud_oauth_state";
 var SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1e3;
@@ -848,7 +966,7 @@ function registerWebAuthRoutes(app) {
   app.get("/auth/discord", (req, res) => {
     const { clientId, redirectUri } = oauthConfig();
     if (!clientId || !redirectUri) return res.status(503).type("html").send("Discord OAuth2 is not configured. Add DISCORD_CLIENT_ID and DISCORD_REDIRECT_URI to .env.");
-    const state = randomUUID();
+    const state = randomUUID2();
     res.cookie(STATE_COOKIE, state, cookieOptions(req, 10 * 60 * 1e3));
     const url = new URL("https://discord.com/oauth2/authorize");
     url.searchParams.set("client_id", clientId);
@@ -895,8 +1013,33 @@ function registerWebAuthRoutes(app) {
   app.get("/api/web/dashboard", async (req, res) => {
     const session = readSession(req);
     if (!session) return unauthorized(res);
-    const [coins, instances] = await Promise.all([getCoinBalance(session.userId), listVmInstances(session.userId)]);
-    res.json({ user: session, coins, instances: instances.map((instance) => ({ id: instance.id, hostname: instance.hostname, ubuntuVersion: instance.ubuntuVersion, status: instance.status, sshxUrl: instance.sshxUrl, createdAt: instance.createdAt })) });
+    const [coins, instances, locale, dailyLimit, dailyUsage, contributionConfigured] = await Promise.all([getCoinBalance(session.userId), listVmInstances(session.userId), getUserLocale(session.userId), getDailyClaimLimit(), getDailyClaimUsageToday(session.userId), hasContributionToken(session.userId)]);
+    res.json({ user: session, coins, locale, daily: { limit: dailyLimit, used: dailyUsage }, contributionConfigured, instances: instances.map((instance) => ({ id: instance.id, hostname: instance.hostname, ubuntuVersion: instance.ubuntuVersion, status: instance.status, sshxUrl: instance.sshxUrl, createdAt: instance.createdAt })) });
+  });
+  app.post("/api/web/language", express.json(), async (req, res) => {
+    const session = readSession(req);
+    if (!session) return unauthorized(res);
+    const locale = await setUserLocale(session.userId, normalizeLocale(req.body?.locale));
+    res.json({ locale });
+  });
+  app.post("/api/web/coin/daily", async (req, res) => {
+    const session = readSession(req);
+    if (!session) return unauthorized(res);
+    const link = await createCoinClaimLink({ userId: session.userId, discordName: session.name, avatarUrl: session.avatarUrl });
+    res.json({ url: `${publicBaseUrl()}/coin/${link.id}?sig=${createClaimSignature(link.id)}`, expiresAt: link.expiresAt });
+  });
+  app.post("/api/web/vms", express.json(), async (req, res) => {
+    const session = readSession(req);
+    if (!session) return unauthorized(res);
+    if ((await getBotAccess(session.userId)).isBanned) return res.status(403).json({ error: "account_banned" });
+    const ubuntuVersion = req.body?.ubuntuVersion === "22.04" ? "22.04" : "24.04";
+    try {
+      const instance = await provisionVps({ userId: session.userId, hostname: typeof req.body?.hostname === "string" ? req.body.hostname : "", ubuntuVersion });
+      res.status(201).json({ instance });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to create VPS.";
+      res.status(message.includes("need") ? 400 : 500).json({ error: message });
+    }
   });
   app.get("/api/web/vms/:instanceId", async (req, res) => {
     const session = readSession(req);
@@ -920,8 +1063,8 @@ function claimPage(link, notice) {
 async function main() {
   requireBotRuntimeConfig();
   const bot = createDiscordBot();
-  const app = express();
-  app.use(express.json({ limit: "32kb" }));
+  const app = express2();
+  app.use(express2.json({ limit: "32kb" }));
   app.get("/health", (_req, res) => res.status(200).json({ service: "frierencloud-bot", status: "ok" }));
   app.get("/coin/:id", async (req, res) => {
     const sig = String(req.query.sig ?? "");
@@ -968,7 +1111,7 @@ async function main() {
   registerVmCallbackRoute(app, (instance) => notifyVpsCompletion(bot, instance));
   registerWebAuthRoutes(app);
   const webRoot = path.join(process.cwd(), "runtime", "public");
-  app.use(express.static(webRoot));
+  app.use(express2.static(webRoot));
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api/") || req.path.startsWith("/auth/") || req.path.startsWith("/coin/")) return next();
     res.sendFile(path.join(webRoot, "index.html"), (error) => {

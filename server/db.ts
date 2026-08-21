@@ -7,6 +7,8 @@ import {
   coinTransactions,
   botSettings,
   botUserAccess,
+  userPreferences,
+  userContributionTokens,
   coinClaimLinks,
   dailyClaimUsage,
   users,
@@ -17,6 +19,7 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { nanoid } from "nanoid";
+import { normalizeLocale, type SupportedLocale } from "./language";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -293,6 +296,33 @@ export async function setBotAccess(userId: number, values: Partial<{ isAdmin: bo
   return getBotAccess(userId);
 }
 
+export async function getUserLocale(userId: number): Promise<SupportedLocale> {
+  const db = await getDb();
+  requireDatabase(db);
+  const result = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId)).limit(1);
+  return normalizeLocale(result[0]?.locale);
+}
+
+export async function setUserLocale(userId: number, locale: SupportedLocale) {
+  const db = await getDb();
+  requireDatabase(db);
+  await db.insert(userPreferences).values({ userId, locale }).onDuplicateKeyUpdate({ set: { locale, updatedAt: new Date() } });
+  return locale;
+}
+
+export async function saveContributionToken(userId: number, encryptedToken: string) {
+  const db = await getDb();
+  requireDatabase(db);
+  await db.insert(userContributionTokens).values({ userId, encryptedToken, confirmedAt: new Date() }).onDuplicateKeyUpdate({ set: { encryptedToken, confirmedAt: new Date(), updatedAt: new Date() } });
+}
+
+export async function hasContributionToken(userId: number) {
+  const db = await getDb();
+  requireDatabase(db);
+  const result = await db.select({ userId: userContributionTokens.userId }).from(userContributionTokens).where(eq(userContributionTokens.userId, userId)).limit(1);
+  return Boolean(result[0]);
+}
+
 export async function createCoinClaimLink(input: { userId: number; discordName: string; avatarUrl?: string | null }) {
   const db = await getDb();
   requireDatabase(db);
@@ -339,6 +369,14 @@ export async function redeemCoinClaimLink(id: string, reward = 1) {
     await tx.insert(coinTransactions).values({ userId: link.userId, actorUserId: null, amount: reward, reason: "daily_claim" });
   });
   return getCoinBalance(link.userId);
+}
+
+export async function getDailyClaimUsageToday(userId: number) {
+  const db = await getDb();
+  requireDatabase(db);
+  const claimDate = new Date().toISOString().slice(0, 10);
+  const result = await db.select().from(dailyClaimUsage).where(and(eq(dailyClaimUsage.userId, userId), eq(dailyClaimUsage.claimDate, claimDate))).limit(1);
+  return result[0]?.count ?? 0;
 }
 
 export async function awardDuePartnerRewards() {
