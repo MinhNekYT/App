@@ -1,0 +1,2 @@
+// Extensionless production entrypoint. Run `npm run build` once, then start with `node index`.
+import "./dist/index.js";
