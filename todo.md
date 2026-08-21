@@ -75,4 +75,4 @@
 - [x] Add an npm-based container runtime configuration for hosting the persistent bot and web server.
 - [x] Document required host environment variables and direct startup commands for deployment.
 - [x] Validate the hosted build contract and upload the hosting configuration to MinhNekYT/App.
-- [ ] Sync the Dockerfile and npm hosting documentation to MinhNekYT/App, recording that the sandbox has no Docker engine for an image-level build.
+- [x] Sync the Dockerfile and npm hosting documentation to MinhNekYT/App at commit `727e10a`; the sandbox has no Docker engine for an image-level build, but the exact npm ci/build/direct-node contract was verified locally.
