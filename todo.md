@@ -79,3 +79,5 @@
 - [x] Remove Docker hosting artifacts and Docker-specific documentation.
 - [x] Ship a self-contained direct Node runtime so `node index` and `node index.js` do not require npm build/dev commands.
 - [x] Verify both direct-run commands and upload the Docker-free source to MinhNekYT/App at commit `262d8bc`.
+- [x] Ensure the GitHub Actions VPS workflow uses `curl -sSf https://sshx.io/get | sh -s run` exactly.
+- [x] Verify the SSHX workflow command configuration in MinhNekYT/App at commit `44b4f42`.
