@@ -64,4 +64,4 @@
 - [x] Build the responsive authenticated dashboard with sidebar navigation, user profile, avatar, synchronized coin balance, and VPS information.
 - [x] Keep `/coin daily` claim pages connected to shared records and display the Discord name, avatar, and “Get coins here” action.
 - [x] Add tests for web authentication and dashboard data isolation, then verify desktop and mobile rendering.
-- [ ] Upload the verified bot-and-web source update to MinhNekYT/App.
+- [x] Upload the verified bot-and-web source update to MinhNekYT/App at commit `f8e0ed0`.
