@@ -70,3 +70,5 @@
 - [x] Run npm validation and upload the npm-only cleanup to MinhNekYT/App at commit `2c5b4c3`.
 - [x] Add a root direct-node entrypoint so production can run with `node index.js` or `node index` after building.
 - [x] Document and verify the direct-node production command, then upload the update to MinhNekYT/App at commit `f208e72`.
+- [x] Remove the Vite-5-only JSX location plugin that blocks npm dependency resolution with Vite 7.
+- [ ] Regenerate package-lock with plain npm install, validate tests/build, and upload the dependency fix to MinhNekYT/App.
