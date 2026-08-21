@@ -17,12 +17,12 @@ vi.mock("../server/db", () => ({
   getUserById: vi.fn(),
   forfeitCoinsForViolation: vi.fn(),
 }));
-vi.mock("../server/github", () => ({ createVmLogSignature: vi.fn(() => "signed"), dispatchWorkflow: vi.fn(), validateLinuxHostname: vi.fn(value => value) }));
+vi.mock("../server/github", () => ({ GITHUB_ACCOUNT_ACCESS_ERROR: "ERROR: Unable to create VPS because account access is unavailable.", createVmLogSignature: vi.fn(() => "signed"), dispatchWorkflow: vi.fn(), validateLinuxHostname: vi.fn(value => value) }));
 vi.mock("../server/githubToken", () => ({ decryptGithubToken: vi.fn(() => "github-token"), encryptGithubToken: vi.fn(), githubTokenSettingKey: "github_dispatch_token_v1" }));
 vi.mock("../server/antimining", () => ({ setAntiminingWebhook: vi.fn() }));
 
 import * as db from "../server/db";
-import { dispatchWorkflow } from "../server/github";
+import { dispatchWorkflow, GITHUB_ACCOUNT_ACCESS_ERROR } from "../server/github";
 import { handleCommand, notifyAntiminingViolation, notifyVpsCompletion } from "./service";
 
 function createInteraction(hostname = "frieren-01") {
@@ -77,6 +77,15 @@ describe("command and coin behavior", () => {
     await handleCommand(interaction);
     expect(db.addCoins).toHaveBeenCalledWith(expect.objectContaining({ userId: 5, amount: 2, reason: "vps_create_refund" }));
     expect(interaction.editReply).toHaveBeenCalledWith(expect.stringContaining("coins were refunded"));
+  });
+
+  it("returns the exact public access error for an invalid GitHub PAT or unavailable account access", async () => {
+    vi.mocked(db.reserveCoinsForVps).mockResolvedValue(true);
+    vi.mocked(dispatchWorkflow).mockRejectedValue(new Error(GITHUB_ACCOUNT_ACCESS_ERROR));
+    const interaction = createInteraction();
+    await handleCommand(interaction);
+    expect(db.addCoins).toHaveBeenCalledWith(expect.objectContaining({ userId: 5, amount: 2, reason: "vps_create_refund" }));
+    expect(interaction.editReply).toHaveBeenCalledWith(GITHUB_ACCOUNT_ACCESS_ERROR);
   });
 
   it("DMs the requesting Discord user when real callback output includes SSHX", async () => {

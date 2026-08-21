@@ -55,4 +55,6 @@
 - [x] Add transparent watchdog checks for known mining process signatures, sustained CPU load, and supported temperature sensors.
 - [x] Add a staged violation response: evidence log, process termination, VPS shutdown, user ban, coin forfeiture, and retained audit trail.
 - [x] Add tests for audit-channel permissions/redaction and Antimining detection and containment policies.
-- [ ] Upload and verify the expanded audit and Antimining source in MinhNekYT/App.
+- [x] Upload and verify the expanded audit and Antimining source in MinhNekYT/App at commit `d9f1fde`.
+- [x] Map GitHub PAT, repository-access, and workflow-dispatch failures in `/create` to `ERROR: Unable to create VPS because account access is unavailable.` without leaking details.
+- [ ] Add tests for the required GitHub access error and upload the verified source update to MinhNekYT/App.

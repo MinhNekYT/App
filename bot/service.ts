@@ -1,6 +1,6 @@
 import { Client, EmbedBuilder, Events, GatewayIntentBits, type ChatInputCommandInteraction } from "discord.js";
 import * as db from "../server/db";
-import { createVmLogSignature, dispatchWorkflow, validateLinuxHostname } from "../server/github";
+import { createVmLogSignature, dispatchWorkflow, GITHUB_ACCOUNT_ACCESS_ERROR, validateLinuxHostname } from "../server/github";
 import { decryptGithubToken, encryptGithubToken, githubTokenSettingKey } from "../server/githubToken";
 import { createClaimSignature } from "../server/claimSignature";
 import { setAntiminingWebhook } from "../server/antimining";
@@ -31,7 +31,7 @@ async function admin(i: ChatInputCommandInteraction, user: BotUser) {
   return true;
 }
 function runner() { const r = botConfig.defaultRunner; if (!r.githubOwner || !r.githubRepo) throw new Error("GitHub runner is not configured."); return r; }
-async function token() { const v = await db.getBotSetting(githubTokenSettingKey); if (!v) throw new Error("No GitHub token is configured. Ask an administrator to use /token."); return decryptGithubToken(v); }
+async function token() { const v = await db.getBotSetting(githubTokenSettingKey); if (!v) throw new Error(GITHUB_ACCOUNT_ACCESS_ERROR); try { return decryptGithubToken(v); } catch { throw new Error(GITHUB_ACCOUNT_ACCESS_ERROR); } }
 function card(v: any) { return new EmbedBuilder().setColor(0x8be9fd).setTitle(`Ubuntu ${v.ubuntuVersion} VPS #${v.id} · ${v.hostname}`).addFields({ name: "Status", value: v.status, inline: true }, { name: "SSHX", value: v.sshxUrl || "Waiting for real workflow output" }); }
 
 export async function handleCommand(i: ChatInputCommandInteraction) {
@@ -63,7 +63,7 @@ export async function handleCommand(i: ChatInputCommandInteraction) {
     await i.deferReply({ ephemeral: true }); const hostname = validateLinuxHostname(i.options.getString("hostname", true)); const ubuntuVersion = i.options.getString("ubuntu", true) as "22.04" | "24.04" | "26.04";
     if (!await db.reserveCoinsForVps({ userId: user.id, cost: VPS_COST })) return i.editReply(`You need **${VPS_COST} coins** to create a VPS.`);
     try { const r = runner(); const vm = await db.createVmInstance({ userId: user.id, hostname, ubuntuVersion, githubOwner: r.githubOwner!, githubRepo: r.githubRepo!, workflowFile: r.workflowFile }); const callbackUrl = `${botConfig.publicBaseUrl}/api/vm-logs/${vm.id}?sig=${createVmLogSignature(vm.id)}`; const antiminingUrl = `${botConfig.publicBaseUrl}/api/antimining/${vm.id}?sig=${createVmLogSignature(vm.id)}`; const run = await dispatchWorkflow({ ...r, hostname, ubuntuVersion, callbackUrl, antiminingUrl, token: await token() }); await db.updateVmFromCallback(vm.id, { workflowRunId: String(run.runId ?? ""), status: "running" }); return i.editReply({ embeds: [card({ ...vm, status: "running" })] }); }
-    catch (e) { await db.addCoins({ userId: user.id, actorUserId: user.id, amount: VPS_COST, reason: "vps_create_refund" }); return i.editReply(`Provisioning failed and your ${VPS_COST} coins were refunded. ${e instanceof Error ? e.message : ""}`); }
+    catch (e) { await db.addCoins({ userId: user.id, actorUserId: user.id, amount: VPS_COST, reason: "vps_create_refund" }); if (e instanceof Error && e.message === GITHUB_ACCOUNT_ACCESS_ERROR) return i.editReply(GITHUB_ACCOUNT_ACCESS_ERROR); return i.editReply(`Provisioning failed and your ${VPS_COST} coins were refunded. ${e instanceof Error ? e.message : ""}`); }
   }
   if (i.commandName === "status") return i.reply({ content: "FrierenCloud is online.", ephemeral: true });
 }

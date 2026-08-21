@@ -4,6 +4,7 @@ import { ENV } from "./_core/env";
 
 const HOSTNAME_PATTERN = /^(?=.{1,63}$)[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/;
 const SSHX_URL_PATTERN = /https:\/\/sshx\.io\/[A-Za-z0-9_~\-./?=&%#]+/i;
+export const GITHUB_ACCOUNT_ACCESS_ERROR = "ERROR: Unable to create VPS because account access is unavailable.";
 
 export function validateLinuxHostname(value: string): string {
   const hostname = value.trim();
@@ -83,7 +84,9 @@ export async function dispatchWorkflow(input: {
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error("GitHub không thể kích hoạt workflow. Hãy kiểm tra repository, workflow, quyền Actions: write và token vừa nhập.");
+      const status = error.response?.status;
+      if (status === 401 || status === 403 || status === 404) throw new Error(GITHUB_ACCOUNT_ACCESS_ERROR);
+      throw new Error("GitHub could not dispatch the workflow. Please try again later.");
     }
     throw error;
   }
