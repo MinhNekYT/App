@@ -67,4 +67,4 @@
 - [x] Upload the verified bot-and-web source update to MinhNekYT/App at commit `f8e0ed0`.
 - [x] Remove pnpm lockfiles, configuration, commands, and documentation references from the npm-only project.
 - [x] Remove obsolete Vercel deployment references and retain only npm-based hosting guidance.
-- [ ] Run npm validation and upload the npm-only cleanup to MinhNekYT/App.
+- [x] Run npm validation and upload the npm-only cleanup to MinhNekYT/App at commit `2c5b4c3`.
